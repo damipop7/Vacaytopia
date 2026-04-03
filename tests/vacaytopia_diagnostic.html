@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Vacaytopia — Connection Diagnostics</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f2f6fc; padding: 2rem; }
+  h1 { font-size: 1.4rem; font-weight: 900; color: #034694; margin-bottom: 0.25rem; }
+  .sub { font-size: 0.85rem; color: #7A8BAA; margin-bottom: 2rem; }
+  .card { background: white; border-radius: 14px; border: 1.5px solid rgba(3,70,148,0.12); padding: 1.5rem; margin-bottom: 1rem; }
+  .card h2 { font-size: 0.9rem; font-weight: 700; color: #0D1B3E; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .field { margin-bottom: 0.75rem; }
+  .field label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #7A8BAA; margin-bottom: 4px; }
+  .field input { width: 100%; padding: 0.65rem 0.9rem; border: 1.5px solid rgba(3,70,148,0.15); border-radius: 9px; font-family: monospace; font-size: 0.82rem; color: #0D1B3E; outline: none; }
+  .field input:focus { border-color: #034694; }
+  .btn { padding: 0.75rem 1.75rem; background: #F5A623; color: white; border: none; border-radius: 9999px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+  .btn:hover { background: #D4880F; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .result { margin-top: 1rem; }
+  .test { display: flex; align-items: flex-start; gap: 10px; padding: 0.85rem 1rem; border-radius: 9px; margin-bottom: 0.5rem; font-size: 0.83rem; }
+  .test.pass { background: #d1fae5; border: 1px solid rgba(16,185,129,0.3); }
+  .test.fail { background: #fff1f1; border: 1px solid rgba(226,75,74,0.3); }
+  .test.warn { background: #fff8ee; border: 1px solid rgba(245,166,35,0.3); }
+  .test.info { background: #E8F0FB; border: 1px solid rgba(3,70,148,0.2); }
+  .test.running { background: #f4f7fc; border: 1px solid rgba(3,70,148,0.1); }
+  .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .test-title { font-weight: 700; color: #0D1B3E; }
+  .test-detail { color: #3D4F6B; margin-top: 2px; font-size: 0.78rem; line-height: 1.5; word-break: break-all; }
+  .fix { background: rgba(3,70,148,0.06); border-radius: 6px; padding: 6px 10px; margin-top: 6px; font-size: 0.75rem; color: #034694; line-height: 1.6; }
+  .fix strong { color: #0D1B3E; }
+  .summary { padding: 1rem 1.25rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; margin-top: 1rem; }
+  .summary.all-pass { background: #d1fae5; color: #065f46; border: 1.5px solid rgba(16,185,129,0.3); }
+  .summary.has-fail { background: #fff1f1; color: #991b1b; border: 1.5px solid rgba(226,75,74,0.3); }
+  code { background: rgba(3,70,148,0.08); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 0.88em; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(3,70,148,0.2); border-top-color: #034694; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .env-note { background: #E8F0FB; border-radius: 9px; padding: 1rem; font-size: 0.8rem; color: #3D4F6B; line-height: 1.7; margin-bottom: 1.25rem; }
+  .env-note strong { color: #034694; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Vacaytopia Connection Diagnostics</h1>
+<p class="sub">This page tests every layer of your Supabase connection and tells you exactly what's wrong and how to fix it.</p>
+
+<div class="card">
+  <h2>⚙️ Enter your Supabase credentials</h2>
+  <div class="env-note">
+    Paste your values from your <strong>.env</strong> file below. This page runs entirely in your browser — nothing is sent anywhere except directly to your own Supabase project.
+  </div>
+  <div class="field">
+    <label>VITE_SUPABASE_URL</label>
+    <input type="text" id="url-input" placeholder="https://xxxxxxxxxxxxxxxx.supabase.co" />
+  </div>
+  <div class="field">
+    <label>VITE_SUPABASE_ANON_KEY</label>
+    <input type="text" id="key-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+  </div>
+  <button class="btn" id="run-btn" onclick="runDiagnostics()">Run Full Diagnostic →</button>
+</div>
+
+<div id="results"></div>
+
+<script>
+const out = document.getElementById('results')
+
+function addTest(status, title, detail, fix) {
+  const icons = { pass:'✅', fail:'❌', warn:'⚠️', info:'ℹ️', running:'⏳' }
+  const div = document.createElement('div')
+  div.className = `card`
+  div.innerHTML = `
+    <div class="test ${status}">
+      <span class="icon">${icons[status]||'•'}</span>
+      <div>
+        <div class="test-title">${title}</div>
+        ${detail ? `<div class="test-detail">${detail}</div>` : ''}
+        ${fix ? `<div class="fix">${fix}</div>` : ''}
+      </div>
+    </div>`
+  out.appendChild(div)
+  return div
+}
+
+function clearResults() {
+  out.innerHTML = ''
+}
+
+async function runDiagnostics() {
+  clearResults()
+  const btn = document.getElementById('run-btn')
+  btn.disabled = true
+  btn.textContent = 'Running tests...'
+
+  const rawUrl = document.getElementById('url-input').value.trim()
+  const rawKey = document.getElementById('key-input').value.trim()
+
+  let passes = 0
+  let fails   = 0
+
+  // ── TEST 1: URL present ──────────────────────────────────────────
+  if (!rawUrl) {
+    addTest('fail', 'Supabase URL is empty',
+      'You haven\'t entered a URL.',
+      '<strong>Fix:</strong> Open your <code>.env</code> file and copy the value of <code>VITE_SUPABASE_URL</code> into the field above.')
+    fails++
+  } else {
+    addTest('pass', 'Supabase URL is present', `Value: <code>${rawUrl.substring(0,50)}...</code>`)
+    passes++
+  }
+
+  // ── TEST 2: URL format ───────────────────────────────────────────
+  if (rawUrl) {
+    const urlOk = rawUrl.startsWith('https://') && rawUrl.includes('.supabase.co')
+    const hasTrailingSlash = rawUrl.endsWith('/')
+    if (!urlOk) {
+      addTest('fail', 'Supabase URL format is wrong',
+        `Got: <code>${rawUrl}</code>`,
+        '<strong>Fix:</strong> It must start with <code>https://</code> and contain <code>.supabase.co</code>. Example: <code>https://abcdefgh.supabase.co</code>')
+      fails++
+    } else if (hasTrailingSlash) {
+      addTest('warn', 'Supabase URL has a trailing slash',
+        `Got: <code>${rawUrl}</code>`,
+        '<strong>Fix:</strong> Remove the trailing <code>/</code> from the end of the URL in your <code>.env</code> file.')
+      fails++
+    } else {
+      addTest('pass', 'Supabase URL format looks correct', `<code>${rawUrl}</code>`)
+      passes++
+    }
+  }
+
+  // ── TEST 3: Key present ──────────────────────────────────────────
+  if (!rawKey) {
+    addTest('fail', 'Anon key is empty',
+      'You haven\'t entered a key.',
+      '<strong>Fix:</strong> In Supabase → Project Settings → Data API → copy the <code>anon / public</code> key (starts with <code>eyJhbGci</code>).')
+    fails++
+    finalize(passes, fails, btn); return
+  } else {
+    addTest('pass', 'Anon key is present', `First 30 chars: <code>${rawKey.substring(0,30)}...</code>`)
+    passes++
+  }
+
+  // ── TEST 4: Key starts with eyJ ─────────────────────────────────
+  if (!rawKey.startsWith('eyJ')) {
+    addTest('fail', 'Anon key has wrong format — does not start with eyJ',
+      `Your key starts with: <code>${rawKey.substring(0,20)}</code>`,
+      '<strong>Fix:</strong> You may have copied the wrong key. The anon key is a JWT token and always starts with <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</code>. Go back to Supabase → Project Settings → Data API and copy the <code>anon public</code> key.')
+    fails++
+    finalize(passes, fails, btn); return
+  } else {
+    addTest('pass', 'Anon key starts with eyJ — correct JWT format')
+    passes++
+  }
+
+  // ── TEST 5: Key length ───────────────────────────────────────────
+  if (rawKey.length < 100) {
+    addTest('fail', `Anon key is too short (${rawKey.length} chars — should be 200+)`,
+      'The key appears to have been cut off during copy.',
+      '<strong>Fix:</strong> Go back to Supabase, click the copy icon next to the anon key (don\'t select and copy manually — use the copy button to get the full key).')
+    fails++
+  } else {
+    addTest('pass', `Anon key length looks good (${rawKey.length} characters)`)
+    passes++
+  }
+
+  // ── TEST 6: Key has quotes ───────────────────────────────────────
+  if (rawKey.startsWith('"') || rawKey.startsWith("'")) {
+    addTest('fail', 'Anon key has quote characters at the start',
+      `Key starts with: <code>${rawKey.substring(0,5)}</code>`,
+      '<strong>Fix:</strong> Remove the quote marks from your <code>.env</code> file. It should be <code>VITE_SUPABASE_ANON_KEY=eyJ...</code> with no quotes.')
+    fails++
+  }
+
+  // ── TEST 7: Decode JWT payload ───────────────────────────────────
+  try {
+    const parts = rawKey.split('.')
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+      const role = payload.role || payload.iss || 'unknown'
+      if (role === 'anon') {
+        addTest('pass', 'JWT payload confirms this is the anon key', `Role: <code>${role}</code>`)
+        passes++
+      } else if (role === 'service_role') {
+        addTest('fail', 'You copied the service_role key instead of the anon key!',
+          `Role in key: <code>${role}</code> — this is the wrong key.`,
+          '<strong>Fix:</strong> In Supabase → Project Settings → Data API, there are two keys. You need the TOP one labeled <code>anon / public</code>, NOT the one labeled <code>service_role</code>.')
+        fails++
+      } else {
+        addTest('warn', `JWT role: <code>${role}</code> — unexpected value`, `Full payload: <code>${JSON.stringify(payload)}</code>`)
+      }
+      // Check expiry
+      if (payload.exp) {
+        const expDate = new Date(payload.exp * 1000)
+        const now = new Date()
+        if (expDate < now) {
+          addTest('fail', 'JWT token is expired!',
+            `Expired: ${expDate.toISOString()}`,
+            '<strong>Fix:</strong> Go to Supabase and regenerate your API keys.')
+          fails++
+        } else {
+          addTest('pass', 'JWT token is not expired')
+          passes++
+        }
+      }
+    }
+  } catch(e) {
+    addTest('warn', 'Could not decode JWT payload', e.message)
+  }
+
+  // ── TEST 8: Network — can we reach Supabase at all ───────────────
+  addTest('info', 'Testing network connection to Supabase...')
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const pingRes = await fetch(`${rawUrl}/rest/v1/`, {
+      headers: { 'apikey': rawKey, 'Authorization': `Bearer ${rawKey}` },
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    if (pingRes.ok || pingRes.status === 200) {
+      addTest('pass', `Network connection to Supabase works (HTTP ${pingRes.status})`)
+      passes++
+    } else {
+      const body = await pingRes.text().catch(() => '')
+      addTest('fail', `Supabase returned HTTP ${pingRes.status} on root endpoint`,
+        `Response: <code>${body.substring(0,200)}</code>`,
+        '<strong>Fix:</strong> This usually means the URL or key is wrong.')
+      fails++
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      addTest('fail', 'Network request timed out (8 seconds)',
+        'Could not reach Supabase at all.',
+        '<strong>Fix:</strong> Check your internet connection, or verify the Supabase URL is correct.')
+    } else {
+      addTest('fail', `Network error: ${e.message}`, '',
+        '<strong>Fix:</strong> Check the URL is exactly right and your internet connection is working.')
+    }
+    fails++
+  }
+
+  // ── TEST 9: Can we query the experiences table ───────────────────
+  try {
+    const res = await fetch(
+      `${rawUrl}/rest/v1/experiences?select=id,title,city&limit=1`,
+      { headers: { 'apikey': rawKey, 'Authorization': `Bearer ${rawKey}`, 'Content-Type': 'application/json' } }
+    )
+    const body = await res.text()
+    if (res.status === 200) {
+      const data = JSON.parse(body)
+      if (data.length > 0) {
+        addTest('pass', '✨ Experiences table exists and has data!',
+          `First experience: <code>${data[0].title}</code> in <code>${data[0].city}</code>`,
+          'Your database is working perfectly.')
+        passes++
+      } else {
+        addTest('warn', 'Experiences table exists but is empty',
+          'The table was created but the seed data was not inserted.',
+          '<strong>Fix:</strong> Go to Supabase → SQL Editor → New query → paste and run <code>supabase/migrations/001_initial_schema.sql</code> again.')
+        fails++
+      }
+    } else if (res.status === 400) {
+      addTest('fail', `API returned 400 on experiences query`,
+        `Response body: <code>${body.substring(0,300)}</code>`,
+        '<strong>Most likely fix:</strong> Your anon key is invalid. Go to Supabase → Project Settings → Data API → copy the <code>anon public</code> publishable key.')
+      fails++
+    } else if (res.status === 401) {
+      addTest('fail', 'API returned 401 Unauthorized — key is rejected by Supabase',
+        `Response: <code>${body.substring(0,200)}</code>`,
+        '<strong>Fix:</strong> The key you\'re using is not valid for this project. Make sure you\'re copying the key from the correct Supabase project (the one with URL <code>vtxikcqasjxyjlxsxdof.supabase.co</code>).')
+      fails++
+    } else if (res.status === 404) {
+      addTest('fail', 'Experiences table does not exist (404)',
+        'The SQL schema has not been run.',
+        '<strong>Fix:</strong> Go to Supabase → SQL Editor → New query → paste the full contents of <code>supabase/migrations/001_initial_schema.sql</code> and click Run.')
+      fails++
+    } else if (res.status === 406) {
+      addTest('fail', 'API returned 406 — RLS policy is blocking the request',
+        `Response: <code>${body.substring(0,200)}</code>`,
+        '<strong>Fix:</strong> The Row Level Security policy on the experiences table may be missing. Re-run the full SQL schema file.')
+      fails++
+    } else {
+      addTest('fail', `Unexpected HTTP ${res.status} from experiences endpoint`,
+        `Response: <code>${body.substring(0,300)}</code>`)
+      fails++
+    }
+  } catch(e) {
+    addTest('fail', `Failed to query experiences table: ${e.message}`)
+    fails++
+  }
+
+  // ── TEST 10: Check .env file format hints ────────────────────────
+  const urlFromEnv = document.getElementById('url-input').value
+  const keyFromEnv = document.getElementById('key-input').value
+
+  if (urlFromEnv.includes(' ') || keyFromEnv.includes(' ')) {
+    addTest('fail', 'Space detected in URL or key',
+      'One of your values contains a space character.',
+      '<strong>Fix:</strong> Remove all spaces from the URL and key values in your <code>.env</code> file.')
+    fails++
+  }
+
+  finalize(passes, fails, btn)
+}
+
+function finalize(passes, fails, btn) {
+  const total = passes + fails
+  const summaryDiv = document.createElement('div')
+  summaryDiv.className = `card`
+  if (fails === 0) {
+    summaryDiv.innerHTML = `<div class="summary all-pass">✅ All ${total} tests passed — your Supabase connection is working correctly. Go back to your app, restart the dev server (Ctrl+C then npm run dev), and hard refresh the browser (Cmd+Shift+R).</div>`
+  } else {
+    summaryDiv.innerHTML = `<div class="summary has-fail">❌ ${fails} test${fails>1?'s':''} failed out of ${total}. Follow the fix instructions above for each red test. Start from the top and work down.</div>`
+  }
+  document.getElementById('results').appendChild(summaryDiv)
+  btn.disabled = false
+  btn.textContent = 'Run Full Diagnostic →'
+}
+</script>
+</body>
+</html>

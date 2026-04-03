@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Vacaytopia CSS Variables ── */
+:root {
+  --blue:       #034694;
+  --blue-mid:   #1a5fa8;
+  --blue-light: #6A7AB5;
+  --blue-tint:  #E8F0FB;
+  --gold:       #F5A623;
+  --gold-dark:  #D4880F;
+  --gold-tint:  #fff8ee;
+  --bg:         #f2f6fc;
+  --radius:     14px;
+  --radius-sm:  9px;
+  --radius-pill:9999px;
+}
+
+/* ── Base resets ── */
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: var(--bg);
+  color: #0D1B3E;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* ── Reusable component classes ── */
+@layer components {
+  .btn-primary {
+    @apply bg-gold-brand hover:bg-gold-dark text-white font-semibold
+           rounded-pill px-6 py-3 transition-all duration-200
+           hover:scale-105 active:scale-100 cursor-pointer border-none;
+  }
+
+  .btn-outline {
+    @apply bg-white text-blue-brand border border-blue-brand/25
+           hover:bg-blue-tint font-semibold rounded-pill px-5 py-2.5
+           transition-all duration-200 cursor-pointer;
+  }
+
+  .card {
+    @apply bg-white rounded-card border border-blue-brand/10
+           shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-blue-brand/15 rounded-[9px]
+           font-sans text-sm text-[#0D1B3E] bg-white outline-none
+           focus:border-blue-brand focus:ring-2 focus:ring-2 focus:ring-offset-0
+           placeholder:text-[#7A8BAA] transition-all duration-200;
+  }
+
+  .tag-category {
+    @apply inline-block text-[10px] font-bold tracking-wide uppercase
+           px-2 py-0.5 rounded-full;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           text-[11px] font-bold;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--blue-tint); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--blue-light); }
