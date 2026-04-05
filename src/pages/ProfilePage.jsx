@@ -62,7 +62,7 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
               </div>
               <div className="flex gap-2 pb-2">
                 <button onClick={() => setEditing(!editing)} className="btn-outline text-xs px-4 py-2">✎ Edit Profile</button>
-                <button onClick={() => { signOut(); navigate('/') }} className="text-xs font-semibold text-red-400 hover:text-red-600 px-3 py-2 transition-colors">Sign Out</button>
+                <button onClick={async () => { await signOut(); navigate('/') }} className="text-xs font-semibold text-red-400 hover:text-red-600 px-3 py-2 transition-colors">Sign Out</button>
               </div>
             </div>
 

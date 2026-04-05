@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useWishlist } from '../../hooks/useWishlist'
@@ -9,9 +10,51 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
   const initials = profile
     ? `${profile.first_name?.[0] ?? ''}${profile.last_name?.[0] ?? ''}`.toUpperCase()
     : '?'
+
+  const isAdmin = profile?.role === 'admin'
+
+  // Close dropdown when navigating to a new page
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+
+  // Close dropdown when clicking anywhere outside it
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
+
+  // Close dropdown on Escape key
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleEsc(e) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [menuOpen])
+
+  // FIX: await signOut, then navigate home
+  async function handleSignOut() {
+    setMenuOpen(false)
+    await signOut()
+    navigate('/')
+  }
+
+  function handleNavItem(fn) {
+    setMenuOpen(false)
+    fn()
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -46,18 +89,42 @@ export default function AppLayout() {
                 )}
               </button>
 
-              {/* Avatar / menu */}
-              <div className="relative group">
-                <button className="w-9 h-9 rounded-full bg-blue-brand text-white font-bold text-sm flex items-center justify-center cursor-pointer hover:bg-blue-mid transition-colors">
+              {/* Avatar / click-toggled menu */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(o => !o)}
+                  aria-expanded={menuOpen}
+                  aria-haspopup="true"
+                  className="w-9 h-9 rounded-full bg-blue-brand text-white font-bold text-sm flex items-center justify-center cursor-pointer hover:bg-blue-mid transition-colors select-none"
+                >
                   {initials}
                 </button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-card border border-blue-brand/10 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-1 z-50">
-                  <DropItem label="My Profile" onClick={() => navigate('/profile')} />
-                  <DropItem label="My trips" onClick={() => navigate('/profile', { state: { tab: 'history' } })} />
-                  <DropItem label="Personalise feed" onClick={() => navigate('/interests')} />
-                  <div className="my-1 border-t border-blue-brand/8" />
-                  <DropItem label="Sign Out" onClick={signOut} danger />
-                </div>
+
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-card border border-blue-brand/10 shadow-lg py-1 z-50">
+                    {/* User info header */}
+                    <div className="px-4 py-2 border-b border-blue-brand/8 mb-1">
+                      <p className="text-xs font-semibold text-[#0D1B3E] truncate">
+                        {[profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'My Account'}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
+                    </div>
+
+                    <DropItem label="My Profile"       onClick={() => handleNavItem(() => navigate('/profile'))} />
+                    <DropItem label="My trips"         onClick={() => handleNavItem(() => navigate('/profile', { state: { tab: 'history' } }))} />
+                    <DropItem label="Personalise feed" onClick={() => handleNavItem(() => navigate('/interests'))} />
+
+                    {isAdmin && (
+                      <>
+                        <div className="my-1 border-t border-blue-brand/8" />
+                        <DropItem label="⚙️ Admin Dashboard" onClick={() => handleNavItem(() => navigate('/admin'))} />
+                      </>
+                    )}
+
+                    <div className="my-1 border-t border-blue-brand/8" />
+                    <DropItem label="Sign Out" onClick={handleSignOut} danger />
+                  </div>
+                )}
               </div>
             </>
           ) : (

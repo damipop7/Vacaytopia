@@ -30,6 +30,26 @@ export function useSaveQuiz() {
     mutationFn: async payload => {
       if (!user) throw new Error('Sign in required')
 
+      // Google OAuth sometimes creates the auth user before the DB trigger
+      // fires and creates the profile row. Upsert the profile first to
+      // guarantee the foreign key exists before inserting quiz_results.
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: user.id,
+            email: user.email,
+            first_name: user.user_metadata?.first_name
+              || user.user_metadata?.full_name?.split(' ')[0]
+              || null,
+            last_name: user.user_metadata?.last_name
+              || user.user_metadata?.full_name?.split(' ').slice(1).join(' ')
+              || null,
+          },
+          { onConflict: 'id', ignoreDuplicates: false }
+        )
+      if (profileError) throw profileError
+
       const { error } = await supabase.from('quiz_results').insert({
         user_id: user.id,
         interests: payload.interests,

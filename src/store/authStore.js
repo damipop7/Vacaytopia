@@ -18,7 +18,8 @@ export const useAuthStore = create((set, get) => ({
     }
     set({ loading: false })
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    // FIX: store the unsubscribe handle so we don't leak listeners on HMR
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         set({ user: session.user })
         await get().fetchProfile(session.user.id)
@@ -26,6 +27,9 @@ export const useAuthStore = create((set, get) => ({
         set({ user: null, profile: null })
       }
     })
+
+    // Return cleanup — React StrictMode / HMR calls init twice; this prevents double listeners
+    return () => subscription.unsubscribe()
   },
 
   fetchProfile: async (userId) => {
@@ -74,9 +78,10 @@ export const useAuthStore = create((set, get) => ({
     if (error) throw error
   },
 
+  // FIX: clear state first so UI updates immediately, then call Supabase
   signOut: async () => {
-    await supabase.auth.signOut()
     set({ user: null, profile: null })
+    await supabase.auth.signOut()
   },
 
   updateProfile: async (updates) => {

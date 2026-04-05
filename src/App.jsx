@@ -14,9 +14,11 @@ import AuthCallback   from './pages/AuthCallback'
 import NotFoundPage   from './pages/NotFoundPage'
 import PrivacyPage    from './pages/PrivacyPage'
 import InterestsPage  from './pages/InterestsPage'
+import AdminPage      from './pages/AdminPage'
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
+import AdminRoute     from './components/layout/AdminRoute'
 import ErrorBoundary  from './components/ui/ErrorBoundary'
 
 import './styles/index.css'
@@ -48,12 +50,20 @@ export default function App() {
             <Route path="/auth"          element={<AuthPage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
 
+            {/* ── Authenticated routes ── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/book/:experienceId" element={<BookingPage />} />
                 <Route path="/profile"            element={<ProfilePage />} />
                 <Route path="/interests"          element={<InterestsPage />} />
                 <Route path="/auth/quiz"          element={<Navigate to="/interests" replace />} />
+              </Route>
+            </Route>
+
+            {/* ── Admin-only routes ── */}
+            <Route element={<AdminRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/admin" element={<AdminPage />} />
               </Route>
             </Route>
 
