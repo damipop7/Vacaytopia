@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { ONBOARD_INTERESTS_KEY } from '../lib/appUrl'
+import BrandMark from '../components/ui/BrandMark'
 
 export default function AuthPage() {
   const [tab,       setTab]       = useState('signup')
@@ -9,9 +11,18 @@ export default function AuthPage() {
   const [form,      setForm]      = useState({ firstName:'', lastName:'', email:'', password:'' })
 
   const { signUp, signIn, signInWithGoogle } = useAuthStore()
+  const authLoading = useAuthStore(s => s.loading)
+  const user          = useAuthStore(s => s.user)
   const navigate  = useNavigate()
   const location  = useLocation()
   const from      = location.state?.from?.pathname || '/browse'
+
+  useEffect(() => {
+    if (authLoading || !user) return
+    // Let new signups reach /interests (flag set in handleSubmit / OAuth callback)
+    if (sessionStorage.getItem(ONBOARD_INTERESTS_KEY) === '1') return
+    navigate(from, { replace: true })
+  }, [authLoading, user, from, navigate])
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
 
@@ -25,10 +36,12 @@ export default function AuthPage() {
     try {
       if (tab === 'signup') {
         await signUp({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName })
-        navigate('/auth/quiz') // → take quiz after signup
+        sessionStorage.setItem(ONBOARD_INTERESTS_KEY, '1')
+        navigate('/interests', { replace: true })
       } else {
+        sessionStorage.removeItem(ONBOARD_INTERESTS_KEY)
         await signIn({ email: form.email, password: form.password })
-        navigate(from)
+        navigate(from, { replace: true })
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
@@ -48,8 +61,8 @@ export default function AuthPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="font-display font-black text-3xl text-blue-brand">
-            Vacay<span className="text-gold-brand">topia</span>
+          <div className="text-3xl">
+            <BrandMark />
           </div>
           <div className="text-gray-400 text-sm mt-1">Your next great experience is one step away</div>
         </div>
@@ -148,7 +161,7 @@ export default function AuthPage() {
           )}
 
           <p className="text-center text-xs text-gray-400 mt-3">
-            {tab === 'signup' ? 'Already have an account? ' : 'New to Vacaytopia? '}
+            {tab === 'signup' ? 'Already have an account? ' : 'New to vtopia? '}
             <span className="text-blue-brand font-semibold cursor-pointer" onClick={() => setTab(tab === 'signup' ? 'login' : 'signup')}>
               {tab === 'signup' ? 'Sign in' : 'Create account'}
             </span>

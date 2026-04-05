@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useExperience } from '../hooks/useRecommendations'
 import { useBookings } from '../hooks/useBookings'
 import { useAuthStore } from '../store/authStore'
@@ -14,9 +14,11 @@ const GRADIENTS = {
 export default function BookingPage() {
   const { experienceId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, profile } = useAuthStore()
   const { data: exp, isLoading } = useExperience(experienceId)
   const { createBooking } = useBookings()
+  const prefillApplied = useRef('')
 
   const [step,    setStep]    = useState(1)
   const [date,    setDate]    = useState('')
@@ -26,12 +28,53 @@ export default function BookingPage() {
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
+  const [shareCopied, setShareCopied] = useState(false)
 
   const today  = new Date().toISOString().split('T')[0]
   const total  = exp ? exp.price_per_person * adults : 0
   const grad   = exp ? (GRADIENTS[exp.image_gradient] || GRADIENTS['ci-mia']) : ''
+  const maxGuests = exp ? Math.min(Number(exp.max_guests) || 8, 20) : 8
+
+  useEffect(() => {
+    if (!exp) return
+    const key = `${experienceId}:${location.key}`
+    if (prefillApplied.current === key) return
+    const st = location.state
+    if (!st || typeof st !== 'object') {
+      prefillApplied.current = key
+      return
+    }
+    if (typeof st.guests === 'number') {
+      setAdults(Math.min(Math.max(1, st.guests), maxGuests))
+    }
+    if (st.date) setDate(st.date)
+    if (st.time) setTime(st.time)
+    prefillApplied.current = key
+  }, [exp, experienceId, location.key, location.state, maxGuests])
+
+  useEffect(() => {
+    if (!exp) return
+    setAdults(a => Math.min(a, maxGuests))
+  }, [exp, maxGuests])
 
   const STEPS = ['Details','Booking','Payment','Confirmed']
+
+  const bumpAdults = (delta) => {
+    setAdults(a => Math.min(maxGuests, Math.max(1, a + delta)))
+  }
+
+  const copyBookingSummary = useCallback(() => {
+    const lines = [
+      `vtopia booking — ${exp?.title}`,
+      `${exp?.city} · ${date} · ${time}`,
+      `${adults} guests · $${total.toFixed(2)}`,
+      booking?.booking_reference ? `Ref: ${booking.booking_reference}` : '',
+    ].filter(Boolean)
+    void navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setShareCopied(true)
+      window.setTimeout(() => setShareCopied(false), 2200)
+    })
+  }, [exp, date, time, adults, total, booking?.booking_reference])
 
   const handleBook = async () => {
     if (!date) return setError('Please select a date.')
@@ -129,9 +172,9 @@ export default function BookingPage() {
                   <div className="flex items-center justify-between">
                     <div><div className="font-semibold text-sm">Adults</div><div className="text-xs text-gray-400">Ages 13+</div></div>
                     <div className="flex items-center gap-4">
-                      <button onClick={() => setAdults(Math.max(1,adults-1))} className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors">−</button>
+                      <button type="button" onClick={() => bumpAdults(-1)} disabled={adults <= 1} className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">−</button>
                       <span className="font-bold text-lg w-6 text-center">{adults}</span>
-                      <button onClick={() => setAdults(Math.min(exp.max_guests||8,adults+1))} className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors">+</button>
+                      <button type="button" onClick={() => bumpAdults(1)} disabled={adults >= maxGuests} className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">+</button>
                     </div>
                   </div>
                 </div>
@@ -158,7 +201,7 @@ export default function BookingPage() {
                 <div className="bg-white rounded-card border border-blue-brand/10 p-6">
                   <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Payment</h2>
                   <div className="bg-blue-tint rounded-[9px] p-4 mb-4 text-sm text-blue-brand font-medium">
-                    🔒 Payments processed securely by Stripe. Vacaytopia never stores your card details.
+                    🔒 Payments processed securely by Stripe. vtopia never stores your card details.
                   </div>
                   <div className="mb-3"><label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wide">Name on card</label><input className="input-field text-sm" defaultValue={contact.name} /></div>
                   <div className="mb-3"><label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wide">Card number</label><input className="input-field text-sm font-mono" placeholder="4242 4242 4242 4242" maxLength={19} onChange={e=>{let v=e.target.value.replace(/\D/g,'').slice(0,16);e.target.value=v.replace(/(.{4})/g,'$1 ').trim()}} /></div>
@@ -183,10 +226,15 @@ export default function BookingPage() {
               <div className="bg-white rounded-card border border-blue-brand/10 p-8 text-center">
                 <div className="w-20 h-20 rounded-full bg-[#d1fae5] border-3 border-[#10b981] flex items-center justify-center text-4xl mx-auto mb-5" style={{borderWidth:3,borderColor:'#10b981'}}>🎉</div>
                 <h1 className="font-display font-black text-3xl text-[#0D1B3E] mb-2">You're booked!</h1>
-                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                <p className="text-gray-400 text-sm leading-relaxed mb-4">
                   Your <strong className="text-[#0D1B3E]">{exp.title}</strong> in {exp.city} is confirmed.
                   We've sent a receipt to <strong className="text-blue-brand">{contact.email}</strong>.
                 </p>
+                <div className="max-w-sm mx-auto text-left text-xs text-gray-500 space-y-2 mb-6">
+                  <div className="flex items-center gap-2"><span className="text-[#10b981] font-bold">✓</span> Payment received</div>
+                  <div className="flex items-center gap-2"><span className="text-[#10b981] font-bold">✓</span> Confirmation emailed</div>
+                  <div className="flex items-center gap-2"><span className="text-blue-brand font-bold">◷</span> Host may follow up with meeting details</div>
+                </div>
                 <div className="bg-gray-50 rounded-[9px] border border-blue-brand/8 text-left p-5 mb-6">
                   {[['Experience',exp.title],['Location',exp.city],['Date & Time',`${date} · ${time}`],['Guests',`${adults} adult${adults!==1?'s':''}`],['Amount paid',`$${total.toFixed(2)}`],['Booking ref', booking?.booking_reference || 'VT-PENDING']].map(([l,v]) => (
                     <div key={l} className="flex justify-between py-2 border-b border-blue-brand/6 last:border-0">
@@ -195,9 +243,16 @@ export default function BookingPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3 justify-center">
-                  <button onClick={() => navigate('/profile')} className="btn-primary text-sm">View in My Trips</button>
-                  <button onClick={() => navigate('/browse')} className="btn-outline text-sm">Explore More</button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                  <button type="button" onClick={() => navigate('/profile', { state: { tab: 'history' } })} className="btn-primary text-sm w-full sm:w-auto">
+                    View in My trips
+                  </button>
+                  <button type="button" onClick={copyBookingSummary} className="btn-outline text-sm w-full sm:w-auto">
+                    {shareCopied ? '✓ Copied summary' : 'Share trip summary'}
+                  </button>
+                  <button type="button" onClick={() => navigate('/browse')} className="text-sm font-semibold text-blue-brand hover:underline">
+                    Explore more
+                  </button>
                 </div>
               </div>
             )}
@@ -211,9 +266,22 @@ export default function BookingPage() {
                   <div className={`w-12 h-12 rounded-[9px] bg-gradient-to-br ${grad} flex items-center justify-center text-2xl flex-shrink-0`}>{exp.image_emoji}</div>
                   <div><div className="font-display font-bold text-sm text-[#0D1B3E] leading-tight">{exp.title}</div><div className="text-xs text-gray-400">{exp.city} · ★ {exp.rating}</div></div>
                 </div>
-                {[['📅 Date', date || 'Not selected'],['🕐 Time', time],['👥 Guests', `${adults} adult${adults!==1?'s':''}`]].map(([l,v]) => (
-                  <div key={l} className="flex justify-between py-1.5 text-xs"><span className="text-gray-400">{l}</span><span className="font-medium text-[#0D1B3E]">{v}</span></div>
-                ))}
+                <div className="flex justify-between py-1.5 text-xs items-start gap-2">
+                  <span className="text-gray-400 flex-shrink-0">📅 Date</span>
+                  <span className="font-medium text-[#0D1B3E] text-right">{date || 'Not selected'}</span>
+                </div>
+                <div className="flex justify-between py-1.5 text-xs items-center gap-2">
+                  <span className="text-gray-400 flex-shrink-0">🕐 Time</span>
+                  <span className="font-medium text-[#0D1B3E] text-right">{time}</span>
+                </div>
+                <div className="flex justify-between py-1.5 text-xs items-center gap-2">
+                  <span className="text-gray-400 flex-shrink-0">👥 Guests</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" aria-label="Fewer guests" onClick={() => bumpAdults(-1)} disabled={adults <= 1} className="w-7 h-7 rounded-full border border-blue-brand/20 text-blue-brand text-sm font-bold leading-none hover:bg-blue-tint disabled:opacity-35 disabled:cursor-not-allowed">−</button>
+                    <span className="font-semibold text-[#0D1B3E] w-8 text-center tabular-nums">{adults}</span>
+                    <button type="button" aria-label="More guests" onClick={() => bumpAdults(1)} disabled={adults >= maxGuests} className="w-7 h-7 rounded-full border border-blue-brand/20 text-blue-brand text-sm font-bold leading-none hover:bg-blue-tint disabled:opacity-35 disabled:cursor-not-allowed">+</button>
+                  </div>
+                </div>
                 <div className="border-t border-blue-brand/8 mt-3 pt-3">
                   <div className="flex justify-between text-xs mb-1"><span className="text-gray-400">${exp.price_per_person} × {adults} guests</span><span className="font-medium">${total.toFixed(2)}</span></div>
                   <div className="flex justify-between text-xs mb-3"><span className="text-gray-400">Booking fee</span><span className="font-medium text-[#10b981]">Free</span></div>

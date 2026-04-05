@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from './store/authStore'
 
@@ -13,6 +13,7 @@ import GuidePage      from './pages/GuidePage'
 import AuthCallback   from './pages/AuthCallback'
 import NotFoundPage   from './pages/NotFoundPage'
 import PrivacyPage    from './pages/PrivacyPage'
+import InterestsPage  from './pages/InterestsPage'
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -51,6 +52,8 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/book/:experienceId" element={<BookingPage />} />
                 <Route path="/profile"            element={<ProfilePage />} />
+                <Route path="/interests"          element={<InterestsPage />} />
+                <Route path="/auth/quiz"          element={<Navigate to="/interests" replace />} />
               </Route>
             </Route>
 

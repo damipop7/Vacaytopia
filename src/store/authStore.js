@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { getAuthCallbackUrl } from '../lib/appUrl'
 
 export const useAuthStore = create((set, get) => ({
   user:    null,
@@ -10,7 +11,10 @@ export const useAuthStore = create((set, get) => ({
   init: async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
+      set({ user: session.user })
       await get().fetchProfile(session.user.id)
+    } else {
+      set({ user: null, profile: null })
     }
     set({ loading: false })
 
@@ -25,12 +29,17 @@ export const useAuthStore = create((set, get) => ({
   },
 
   fetchProfile: async (userId) => {
-    const { data } = await supabase
+    if (!userId) return
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
-    set({ user: (await supabase.auth.getUser()).data.user, profile: data })
+      .maybeSingle()
+    const { data: { user } } = await supabase.auth.getUser()
+    set(state => ({
+      user: user ?? state.user,
+      profile: profile ?? null,
+    }))
   },
 
   signUp: async ({ email, password, firstName, lastName }) => {
@@ -55,7 +64,7 @@ export const useAuthStore = create((set, get) => ({
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'http://localhost:5173/auth/callback',
+        redirectTo: getAuthCallbackUrl(),
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

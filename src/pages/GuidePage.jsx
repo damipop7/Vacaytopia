@@ -105,7 +105,7 @@ export default function GuidePage() {
               </div>
               <textarea className="input-field text-sm resize-none mb-3" rows={3} placeholder={`Hi ${guide.first_name}, I'd love to book...`} />
               <button className="w-full py-2.5 bg-blue-brand text-white font-semibold text-sm rounded-pill hover:bg-blue-mid transition-colors">Send Message →</button>
-              <div className="mt-3 p-2.5 bg-blue-tint rounded-[9px] text-xs text-blue-brand">🔒 Messages go through Vacaytopia's secure platform.</div>
+              <div className="mt-3 p-2.5 bg-blue-tint rounded-[9px] text-xs text-blue-brand">🔒 Messages go through vtopia's secure platform.</div>
             </div>
           </div>
         </div>

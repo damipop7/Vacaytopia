@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, lazy, Suspense, Fragment } from 'react'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
+
+const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
 const CITIES = [
   { value: 'all',           label: '🌍 All Cities' },
@@ -24,17 +26,39 @@ const CATEGORIES = [
 
 const SORTS = ['Recommended', 'Price ↑', 'Price ↓', 'Top Rated']
 
+// Globe + marketing URLs use slugs; filters use display city names from the DB
+const BROWSE_CITY_SLUGS = {
+  'new-york-city': 'New York City',
+  miami: 'Miami',
+  orlando: 'Orlando',
+  'las-vegas': 'Las Vegas',
+  'new-orleans': 'New Orleans',
+}
+
+function resolveBrowseCityParam(param) {
+  if (!param) return null
+  return BROWSE_CITY_SLUGS[param] || param
+}
+
 export default function BrowsePage() {
   const { city: cityParam } = useParams()
   const [searchParams]      = useSearchParams()
 
-  const [city,     setCity]     = useState(cityParam || searchParams.get('city') || 'all')
+  const [city,     setCity]     = useState(
+    () => resolveBrowseCityParam(cityParam) || searchParams.get('city') || 'all'
+  )
   const [category, setCategory] = useState('all')
   const [budget,   setBudget]   = useState(500)
   const [sort,     setSort]     = useState('Recommended')
   const [search,   setSearch]   = useState('')
+  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'map'
 
-  useEffect(() => { if (cityParam) setCity(cityParam) }, [cityParam])
+  useEffect(() => {
+    if (!cityParam) return
+    const resolved = resolveBrowseCityParam(cityParam)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- keep filter in sync when /browse/:city changes
+    if (resolved) setCity(resolved)
+  }, [cityParam])
 
   const { data: experiences = [], isLoading, error } = useRecommendations({
     city:      city !== 'all' ? city : undefined,
@@ -147,18 +171,40 @@ export default function BrowsePage() {
             <p className="text-sm text-gray-400 mt-0.5">
               {isLoading ? 'Finding the best matches...' : `${filtered.length} experience${filtered.length !== 1 ? 's' : ''}`}
             </p>
+            <p className="text-[11px] text-gray-400/90 mt-2 max-w-xl leading-relaxed">
+              <span className="font-semibold text-gray-500">Transparent pricing:</span> rates are per person unless noted.
+              Saved experiences sync everywhere (wishlist) — tune recommendations in{' '}
+              <Link to="/interests" className="text-blue-brand font-semibold hover:underline">Interests</Link>.
+            </p>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
-            <input
-              type="text"
-              placeholder="Search experiences..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="input-field pl-8 text-sm w-56"
-            />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex rounded-pill border border-blue-brand/15 p-0.5 bg-white">
+              {['grid', 'map'].map(m => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setViewMode(m)}
+                  className={`px-3 py-1.5 rounded-pill text-xs font-semibold transition-all ${
+                    viewMode === m
+                      ? 'bg-blue-brand text-white'
+                      : 'text-gray-500 hover:text-blue-brand'
+                  }`}
+                >
+                  {m === 'grid' ? 'Grid' : 'Map'}
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+              <input
+                type="text"
+                placeholder="Search experiences..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="input-field pl-8 text-sm w-56"
+              />
+            </div>
           </div>
         </div>
 
@@ -202,27 +248,39 @@ export default function BrowsePage() {
           </div>
         )}
 
+        {/* Map (lazy — keeps leaflet off initial bundle) */}
+        {!isLoading && filtered.length > 0 && viewMode === 'map' && (
+          <Suspense
+            fallback={
+              <div className="rounded-card border border-blue-brand/10 h-[min(70vh,560px)] bg-blue-tint animate-pulse flex items-center justify-center text-sm text-gray-400">
+                Loading map…
+              </div>
+            }
+          >
+            <BrowseMap experiences={filtered} />
+          </Suspense>
+        )}
+
         {/* Grid */}
-        {!isLoading && filtered.length > 0 && (
+        {!isLoading && filtered.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {filtered.map((exp, idx) => (
-              <>
-                <ExperienceCard key={exp.id} experience={exp} showForYou />
-                {/* Inline ad after every 6th organic card */}
+              <Fragment key={exp.id}>
+                <ExperienceCard experience={exp} showForYou />
                 {idx === 5 && (
-                  <div key="ad-1" className="col-span-full bg-white rounded-card border border-gold-brand/25 px-5 py-4 flex items-center gap-4">
+                  <div className="col-span-full bg-white rounded-card border border-gold-brand/25 px-5 py-4 flex items-center gap-4">
                     <div className="text-3xl">🏨</div>
                     <div className="flex-1">
                       <div className="font-semibold text-sm text-[#0D1B3E]">
                         Stay close to the action
                         <span className="ml-2 text-[10px] font-bold bg-gold-tint text-[#854F0B] px-1.5 py-0.5 rounded border border-gold-brand/25">SPONSORED</span>
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5">Exclusive Vacaytopia hotel rates in {cityName}. Book with your experiences.</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Exclusive vtopia hotel rates in {cityName}. Book with your experiences.</div>
                     </div>
-                    <button className="btn-primary text-xs px-4 py-2 flex-shrink-0">View Deal</button>
+                    <button type="button" className="btn-primary text-xs px-4 py-2 flex-shrink-0">View Deal</button>
                   </div>
                 )}
-              </>
+              </Fragment>
             ))}
           </div>
         )}

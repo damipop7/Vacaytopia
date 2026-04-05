@@ -28,7 +28,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
-    image_emoji, image_gradient, is_sponsored, _score,
+    image_emoji, image_gradient, is_sponsored, _score, guides,
   } = experience
 
   const saved    = isSaved(id)
@@ -81,6 +81,17 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         <h3 className="font-display font-bold text-base text-[#0D1B3E] mb-1 leading-snug line-clamp-2 group-hover:text-blue-brand transition-colors">
           {title}
         </h3>
+
+        {guides?.first_name && (
+          <div className="text-[10px] text-gray-500 mb-2 flex items-center gap-1 flex-wrap">
+            <span className="font-semibold text-blue-brand/80">Local host</span>
+            <span>·</span>
+            <span>{guides.first_name}</span>
+            {guides.rating > 0 && (
+              <span className="text-gold-brand">★ {guides.rating}</span>
+            )}
+          </div>
+        )}
 
         <div className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
           <span>{city}</span>

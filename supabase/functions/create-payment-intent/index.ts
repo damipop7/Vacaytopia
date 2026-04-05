@@ -60,7 +60,7 @@ serve(async (req) => {
         user_id:       booking.user_id,
         commission:    booking.commission.toString(),
       },
-      description: `Vacaytopia: ${booking.experiences.title}`,
+      description: `vtopia: ${booking.experiences.title}`,
     })
 
     // 3. Save the PaymentIntent id to the booking

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- VACAYTOPIA — Complete Database Schema
+-- vtopia — Complete Database Schema
 -- Paste this entire file into Supabase → SQL Editor → Run
 -- ═══════════════════════════════════════════════════════════════════
 

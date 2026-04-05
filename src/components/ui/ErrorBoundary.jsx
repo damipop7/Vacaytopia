@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     // In production, send to your error monitoring service (e.g. Sentry)
-    console.error('Vacaytopia Error:', error, info)
+    console.error('vtopia Error:', error, info)
   }
 
   render() {
@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component {
                 Go Home
               </button>
             </div>
-            {process.env.NODE_ENV === 'development' && (
+            {import.meta.env.DEV && (
               <details className="mt-6 text-left bg-red-50 border border-red-200 rounded-card p-4">
                 <summary className="text-xs font-bold text-red-700 cursor-pointer">Error details (dev only)</summary>
                 <pre className="text-xs text-red-600 mt-2 whitespace-pre-wrap overflow-auto">

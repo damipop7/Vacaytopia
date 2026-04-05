@@ -106,7 +106,7 @@ export function scoreExperience(experience, quizAnswers, savedIds = []) {
  * @param {object} filters  - { city, category, maxBudget, limit }
  */
 export function useRecommendations(filters = {}) {
-  const { user, profile } = useAuthStore()
+  const { user } = useAuthStore()
   const { city, category, maxBudget, limit = 20 } = filters
 
   return useQuery({
@@ -135,10 +135,10 @@ export function useRecommendations(filters = {}) {
 
       if (user) {
         const [quizRes, savedRes] = await Promise.all([
-          supabase.from('quiz_results').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single(),
+          supabase.from('quiz_results').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('wishlists').select('experience_id').eq('user_id', user.id),
         ])
-        quizAnswers = quizRes.data   // null if no quiz taken yet
+        quizAnswers = quizRes.data ?? null
         savedIds    = (savedRes.data || []).map(w => w.experience_id)
       }
 
@@ -168,7 +168,6 @@ export function useExperience(id) {
         .from('experiences')
         .select(`
           *,
-          cities ( name, slug ),
           guides ( * ),
           reviews ( *, profiles ( first_name, last_name, avatar_url ) )
         `)

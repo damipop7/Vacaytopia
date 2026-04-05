@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 const SECTIONS = [
   {
     title: 'What data we collect',
-    body: `When you create a Vacaytopia account we collect your name, email address, and password (hashed — never stored in plain text). When you take the interest quiz we store your answers to power your personalised recommendations. When you make a booking we collect your contact details and store a reference to your Stripe payment — we never see or store your full card number. When you browse we optionally track which experiences you view and save, solely to improve your recommendations.`,
+    body: `When you create a vtopia account we collect your name, email address, and password (hashed — never stored in plain text). When you take the interest quiz we store your answers to power your personalised recommendations. When you make a booking we collect your contact details and store a reference to your Stripe payment — we never see or store your full card number. When you browse we optionally track which experiences you view and save, solely to improve your recommendations.`,
   },
   {
     title: 'How we use your data',
-    body: `We use your data to: show you personalised experience recommendations, process your bookings and send confirmation emails, improve the Vacaytopia platform, and communicate with you about your account. We do not use your data for advertising to third parties, we do not build advertising profiles, and we never sell your data to anyone — ever.`,
+    body: `We use your data to: show you personalised experience recommendations, process your bookings and send confirmation emails, improve the vtopia platform, and communicate with you about your account. We do not use your data for advertising to third parties, we do not build advertising profiles, and we never sell your data to anyone — ever.`,
   },
   {
     title: 'Who we share data with',
@@ -27,11 +27,11 @@ const SECTIONS = [
   },
   {
     title: 'Cookies',
-    body: `Vacaytopia uses a single session cookie to keep you logged in. We do not use tracking cookies, advertising cookies, or third-party analytics cookies. You can clear your session at any time by signing out.`,
+    body: `vtopia uses a single session cookie to keep you logged in. We do not use tracking cookies, advertising cookies, or third-party analytics cookies. You can clear your session at any time by signing out.`,
   },
   {
     title: 'Contact',
-    body: `For any privacy questions or data requests, email privacy@vacaytopia.com. We aim to respond within 5 business days.`,
+    body: `For any privacy questions or data requests, email privacy@vtopia.com. We aim to respond within 5 business days.`,
   },
 ]
 
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           <div>
             <div className="font-bold text-base mb-1">Our data promise</div>
             <div className="text-white/80 text-sm leading-relaxed">
-              Vacaytopia will never sell your data to anyone. We collect only what is necessary
+              vtopia will never sell your data to anyone. We collect only what is necessary
               to give you great travel recommendations. Your data belongs to you.
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
             Questions about this policy? We're here to help.
           </div>
           <a
-            href="mailto:privacy@vacaytopia.com"
+            href="mailto:privacy@vtopia.com"
             className="btn-primary text-sm inline-block"
           >
             Contact Privacy Team

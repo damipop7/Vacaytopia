@@ -1,26 +1,43 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { ONBOARD_INTERESTS_KEY } from '../lib/appUrl'
+import BrandMark from '../components/ui/BrandMark'
+
+function isBrandNewUser(user) {
+  if (!user?.created_at) return false
+  const created = new Date(user.created_at).getTime()
+  return Date.now() - created < 3 * 60 * 1000
+}
+
+function routeAfterAuth(session, navigate) {
+  if (!session?.user) return
+  if (isBrandNewUser(session.user)) {
+    sessionStorage.setItem(ONBOARD_INTERESTS_KEY, '1')
+    navigate('/interests', { replace: true })
+  } else {
+    navigate('/browse', { replace: true })
+  }
+}
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const routedRef = useRef(false)
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          navigate('/browse', { replace: true })
-        } else if (event === 'SIGNED_OUT') {
-          navigate('/auth', { replace: true })
-        }
-      }
-    )
+    const go = session => {
+      if (routedRef.current || !session) return
+      routedRef.current = true
+      routeAfterAuth(session, navigate)
+    }
 
-    // Also check if session already exists (handles page reload on callback)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) go(session)
+      if (event === 'SIGNED_OUT') navigate('/auth', { replace: true })
+    })
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate('/browse', { replace: true })
-      }
+      if (session) go(session)
     })
 
     return () => authListener.subscription.unsubscribe()
@@ -32,8 +49,8 @@ export default function AuthCallback() {
       style={{ background: 'var(--bg)' }}
     >
       <div className="text-center">
-        <div className="font-display font-black text-3xl text-blue-brand mb-3">
-          Vacay<span className="text-gold-brand">topia</span>
+        <div className="text-3xl mb-3 flex justify-center">
+          <BrandMark />
         </div>
         <div className="text-sm text-gray-400">Signing you in...</div>
         <div className="mt-4 flex justify-center gap-1">

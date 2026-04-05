@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useWishlist } from '../../hooks/useWishlist'
+import BrandMark from '../ui/BrandMark'
 
 export default function AppLayout() {
   const { user, profile, signOut } = useAuthStore()
@@ -17,15 +18,15 @@ export default function AppLayout() {
 
       {/* ── Top Nav ── */}
       <nav className="sticky top-0 z-50 bg-white border-b border-blue-brand/10 px-6 py-3 flex items-center gap-4">
-        <Link
-          to="/"
-          className="font-display font-black text-2xl text-blue-brand tracking-tight mr-4"
-        >
-          Vacay<span className="text-gold-brand">topia</span>
+        <Link to="/" className="mr-4">
+          <BrandMark className="text-2xl" />
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
           <NavLink to="/browse" label="Browse" active={location.pathname.startsWith('/browse')} />
+          {user && (
+            <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
+          )}
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
@@ -50,9 +51,10 @@ export default function AppLayout() {
                 <button className="w-9 h-9 rounded-full bg-blue-brand text-white font-bold text-sm flex items-center justify-center cursor-pointer hover:bg-blue-mid transition-colors">
                   {initials}
                 </button>
-                <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-card border border-blue-brand/10 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-1 z-50">
-                  <DropItem label="My Profile"   onClick={() => navigate('/profile')} />
-                  <DropItem label="My Bookings"  onClick={() => navigate('/profile')} />
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-card border border-blue-brand/10 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-1 z-50">
+                  <DropItem label="My Profile" onClick={() => navigate('/profile')} />
+                  <DropItem label="My trips" onClick={() => navigate('/profile', { state: { tab: 'history' } })} />
+                  <DropItem label="Personalise feed" onClick={() => navigate('/interests')} />
                   <div className="my-1 border-t border-blue-brand/8" />
                   <DropItem label="Sign Out" onClick={signOut} danger />
                 </div>
@@ -84,10 +86,8 @@ export default function AppLayout() {
 
       {/* ── Footer ── */}
       <footer className="bg-[#0D1B3E] text-white/60 text-xs py-6 px-6 flex flex-wrap items-center justify-between gap-3 mt-auto">
-        <span className="font-display font-black text-white text-base">
-          Vacay<span className="text-gold-brand">topia</span>
-        </span>
-        <span>© {new Date().getFullYear()} Vacaytopia. We never sell your data.</span>
+        <BrandMark variant="light" className="text-base" />
+        <span>© {new Date().getFullYear()} vtopia. We never sell your data.</span>
         <div className="flex gap-4">
           <a href="#" className="hover:text-gold-brand transition-colors">Privacy</a>
           <a href="#" className="hover:text-gold-brand transition-colors">Terms</a>

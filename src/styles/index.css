@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Vacaytopia CSS Variables ── */
+/* ── vtopia CSS Variables ── */
 :root {
   --blue:       #034694;
   --blue-mid:   #1a5fa8;
@@ -75,3 +75,9 @@ h1, h2, h3, h4 {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--blue-tint); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--blue-light); }
+
+/* Leaflet divIcon — remove default white box behind custom pins */
+.browse-map-pin {
+  background: transparent !important;
+  border: none !important;
+}
