@@ -77,12 +77,22 @@ function StripePaymentForm({ total, onSuccess, onBack, bookingId }) {
 
     // 2. Fetch clientSecret from our edge function
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke('create-payment-intent', {
-        body: { bookingId },
-      })
-
-      if (fnErr || !data?.clientSecret) {
-        throw new Error(fnErr?.message || 'Could not initiate payment. Please try again.')
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ bookingId }),
+        }
+      )
+      const data = await response.json()
+      if (!response.ok || !data?.clientSecret) {
+        throw new Error(data?.error || 'Could not initiate payment. Please try again.')
       }
 
       // 3. Confirm payment with Stripe
