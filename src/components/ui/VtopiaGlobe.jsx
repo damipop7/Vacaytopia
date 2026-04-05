@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 
-// globe.gl is dynamically imported so it doesn't block initial page load
-// This is critical for performance — the globe only loads when the hero is visible
 const GlobeLazy = lazy(() => import('react-globe.gl'))
 
-// ── Vtopia pilot cities with exact coordinates ──────────────────────
 const CITIES = [
   {
     id: 'new-york-city',
@@ -64,7 +61,6 @@ const CITIES = [
   },
 ]
 
-// Arc data — visual connections between cities showing the network
 const ARCS = [
   { startLat: 40.7128, startLng: -74.0060, endLat: 25.7617, endLng: -80.1918, color: '#F5A623' },
   { startLat: 25.7617, startLng: -80.1918, endLat: 28.5383, endLng: -81.3792, color: '#0ea5e9' },
@@ -73,21 +69,28 @@ const ARCS = [
   { startLat: 29.9511, startLng: -90.0715, endLat: 40.7128, endLng: -74.0060, color: '#F5A623' },
 ]
 
+// How long the fly-to animation takes (ms) — keep in sync with pointOfView call below
+const FLY_DURATION = 1200
+
 export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, immersion = 0 }) {
-  const globeRef          = useRef()
-  const containerRef      = useRef()
-  const altitudeCbRef     = useRef(onCameraAltitudeChange)
+  const globeRef      = useRef()
+  const containerRef  = useRef()
+  const altitudeCbRef = useRef(onCameraAltitudeChange)
+  // Tracks the auto-dismiss timer so we can cancel it if user clicks another city
+  const dismissTimer  = useRef(null)
 
   useEffect(() => {
     altitudeCbRef.current = onCameraAltitudeChange
   }, [onCameraAltitudeChange])
 
-  const [size,    setSize]     = useState({ w: 600, h: 600 })
-  const [active,  setActive]   = useState(null)
-  const [hovered, setHovered]  = useState(null)
-  const [ready,   setReady]    = useState(false)
+  const [size,    setSize]    = useState({ w: 600, h: 600 })
+  const [active,  setActive]  = useState(null)   // city id currently shown in card
+  const [hovered, setHovered] = useState(null)
+  const [ready,   setReady]   = useState(false)
+  // Controls the CSS opacity so we can fade-out before unmounting
+  const [cardVisible, setCardVisible] = useState(false)
 
-  // Responsive resize — canvas grows as the hero “immerses” so the globe feels central
+  // Responsive resize
   useEffect(() => {
     const update = () => {
       if (!containerRef.current) return
@@ -102,21 +105,38 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
     return () => ro.disconnect()
   }, [immersion])
 
-  // Initial globe setup once it's mounted
+  // ── Dismiss helpers ────────────────────────────────────────────────
+  const dismissCard = useCallback(() => {
+    // Fade out first, then remove from DOM after transition
+    setCardVisible(false)
+    setTimeout(() => setActive(null), 280)
+  }, [])
+
+  const scheduleAutoDismiss = useCallback(() => {
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+    // Auto-dismiss 2.8 s after the fly animation finishes
+    dismissTimer.current = setTimeout(dismissCard, FLY_DURATION + 2800)
+  }, [dismissCard])
+
+  // Clean up timer on unmount
+  useEffect(() => () => {
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+  }, [])
+
+  // ── Globe ready ────────────────────────────────────────────────────
   const handleGlobeReady = useCallback(() => {
     setReady(true)
     if (!globeRef.current) return
 
-    // Position camera to show North America nicely on load
     globeRef.current.pointOfView({ lat: 35, lng: -95, altitude: 2.2 }, 0)
 
     const ctrl = globeRef.current.controls()
-    ctrl.autoRotate       = true
-    ctrl.autoRotateSpeed  = 0.35
-    ctrl.enableZoom       = true
-    ctrl.zoomSpeed        = 0.65
-    ctrl.enableRotate     = true
-    ctrl.rotateSpeed      = 0.48
+    ctrl.autoRotate      = true
+    ctrl.autoRotateSpeed = 0.35
+    ctrl.enableZoom      = true
+    ctrl.zoomSpeed       = 0.65
+    ctrl.enableRotate    = true
+    ctrl.rotateSpeed     = 0.48
 
     const emitAltitude = () => {
       const pov = globeRef.current?.pointOfView?.()
@@ -128,54 +148,55 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
     ctrl.addEventListener('change', emitAltitude)
   }, [])
 
-  // Fly to a city when clicked
+  // ── City click ────────────────────────────────────────────────────
   const handleCityClick = useCallback((point) => {
     const city = CITIES.find(c => c.id === point.id)
     if (!city) return
 
+    // Cancel any pending auto-dismiss from a previous click
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+
+    // Swap card content instantly, then fade it in
     setActive(city.id)
+    setCardVisible(false)
+    // Small rAF delay so React can mount the card before we trigger the fade-in
+    requestAnimationFrame(() => requestAnimationFrame(() => setCardVisible(true)))
+
     onCitySelect?.(city)
 
     if (globeRef.current) {
-      // Pause auto-rotate while focused
       globeRef.current.controls().autoRotate = false
-
-      // Smooth fly-to animation
       globeRef.current.pointOfView(
         { lat: city.lat, lng: city.lng, altitude: 1.4 },
-        1200  // ms transition
+        FLY_DURATION
       )
-
-      // Resume rotation after 4 seconds
       setTimeout(() => {
-        if (globeRef.current) {
-          globeRef.current.controls().autoRotate = true
-        }
+        globeRef.current?.controls() && (globeRef.current.controls().autoRotate = true)
       }, 4000)
     }
-  }, [onCitySelect])
 
-  // Point label renderer
-  const pointLabel = useCallback((point) => {
-    return `
-      <div style="
-        background: rgba(3,70,148,0.92);
-        backdrop-filter: blur(8px);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-family: DM Sans, sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        border: 1px solid rgba(245,166,35,0.4);
-        pointer-events: none;
-        white-space: nowrap;
-      ">
-        ${point.emoji} ${point.name}
-        <span style="color:#F5A623;margin-left:4px;">${point.experiences}+ exp</span>
-      </div>
-    `
-  }, [])
+    scheduleAutoDismiss()
+  }, [onCitySelect, scheduleAutoDismiss])
+
+  // ── Point label (hover tooltip) ───────────────────────────────────
+  const pointLabel = useCallback((point) => `
+    <div style="
+      background:rgba(3,70,148,0.92);
+      backdrop-filter:blur(8px);
+      color:#fff;
+      padding:6px 12px;
+      border-radius:20px;
+      font-family:DM Sans,sans-serif;
+      font-size:12px;
+      font-weight:600;
+      border:1px solid rgba(245,166,35,0.4);
+      pointer-events:none;
+      white-space:nowrap;
+    ">
+      ${point.emoji} ${point.name}
+      <span style="color:#F5A623;margin-left:4px;">${point.experiences}+ exp</span>
+    </div>
+  `, [])
 
   const activeCity = CITIES.find(c => c.id === active)
 
@@ -191,21 +212,19 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
         </div>
       )}
 
-      {/* The globe */}
+      {/* Globe */}
       <Suspense fallback={null}>
         <GlobeLazy
           ref={globeRef}
           width={size.w}
           height={size.h}
 
-          // Globe appearance
           globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           atmosphereColor="#034694"
           atmosphereAltitude={0.18}
           backgroundColor="rgba(0,0,0,0)"
           showGraticules={false}
 
-          // City pins
           pointsData={CITIES}
           pointLat="lat"
           pointLng="lng"
@@ -216,7 +235,6 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
           onPointClick={handleCityClick}
           onPointHover={p => setHovered(p?.id || null)}
 
-          // Arcs between cities
           arcsData={ARCS}
           arcStartLat="startLat"
           arcStartLng="startLng"
@@ -230,7 +248,6 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
           arcDashAnimateTime={2500}
           arcOpacity={0.5}
 
-          // City name rings
           ringsData={CITIES}
           ringLat="lat"
           ringLng="lng"
@@ -244,14 +261,20 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
         />
       </Suspense>
 
-      {/* City info card — appears when a city is selected */}
+      {/* City info card */}
       {activeCity && (
         <div
           className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-72"
-          style={{ animation: 'slideUp 0.3s ease' }}
+          style={{
+            transition: 'opacity 0.28s ease, transform 0.28s ease',
+            opacity: cardVisible ? 1 : 0,
+            transform: `translateX(-50%) translateY(${cardVisible ? 0 : 10}px)`,
+            pointerEvents: cardVisible ? 'auto' : 'none',
+          }}
         >
           <div className="bg-white/95 backdrop-blur rounded-[14px] border border-blue-brand/15 p-4 shadow-xl">
-            <div className="flex items-center justify-between mb-2">
+            {/* Header row */}
+            <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{activeCity.emoji}</span>
                 <div>
@@ -261,11 +284,23 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
                   <div className="text-xs text-gray-400">{activeCity.experiences}+ experiences</div>
                 </div>
               </div>
-              <span className="text-[10px] font-bold bg-gold-tint text-[#854F0B] border border-gold-brand/25 px-2 py-0.5 rounded-full">
-                {activeCity.tag}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[10px] font-bold bg-gold-tint text-[#854F0B] border border-gold-brand/25 px-2 py-0.5 rounded-full">
+                  {activeCity.tag}
+                </span>
+                {/* Close button */}
+                <button
+                  onClick={dismissCard}
+                  className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xs leading-none"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
+
             <p className="text-xs text-gray-500 mb-3 leading-relaxed">{activeCity.description}</p>
+
             <Link
               to={`/browse/${activeCity.id}`}
               className="block w-full text-center py-2 bg-gold-brand hover:bg-gold-dark text-white text-sm font-bold rounded-pill transition-colors"
@@ -276,7 +311,7 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
         </div>
       )}
 
-      {/* Hint text */}
+      {/* Drag/click hint */}
       {!active && ready && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center pointer-events-none max-w-[90vw]">
           <span className="text-xs text-blue-brand/60 font-medium bg-white/60 backdrop-blur px-3 py-1.5 rounded-full inline-block leading-snug">
@@ -284,13 +319,6 @@ export default function VtopiaGlobe({ onCitySelect, onCameraAltitudeChange, imme
           </span>
         </div>
       )}
-
-      <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(12px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }

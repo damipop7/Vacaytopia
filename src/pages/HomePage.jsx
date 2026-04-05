@@ -201,9 +201,10 @@ export default function HomePage() {
               onCameraAltitudeChange={onGlobeAltitude}
               onCitySelect={city => {
                 setSelectedCity(city)
+                // Scroll exactly when the fly-to animation lands (1200ms)
                 setTimeout(() => {
-                  document.getElementById('featured')?.scrollIntoView({ behavior:'smooth' })
-                }, 1400)
+                  document.getElementById('featured')?.scrollIntoView({ behavior: 'smooth' })
+                }, 1200)
               }}
             />
           </Suspense>
