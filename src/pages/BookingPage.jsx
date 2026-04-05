@@ -464,7 +464,7 @@ export default function BookingPage() {
                   <div className="flex items-center gap-2"><span className="text-[#10b981] font-bold">✓</span> Confirmation emailed</div>
                   <div className="flex items-center gap-2"><span className="text-blue-brand font-bold">◷</span> Host may follow up with meeting details</div>
                 </div>
-                <div className="bg-gray-50 rounded-[9px] border border-blue-brand/8 text-left p-5 mb-6">
+                <div className="bg-gray-50 rounded-[9px] border border-blue-brand/8 p-5 mb-6 mx-auto max-w-sm">
                   {[
                     ['Experience', exp.title],
                     ['Location',   exp.city],
