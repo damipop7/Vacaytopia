@@ -12,6 +12,8 @@ const CITIES = [
   { value: 'Orlando',       label: '🎢 Orlando' },
   { value: 'Las Vegas',     label: '🎰 Las Vegas' },
   { value: 'New Orleans',   label: '🎷 New Orleans' },
+  { value: 'Kansas City', label: '🥩 Kansas City' },
+  { value: 'Austin',      label: '🎸 Austin' },
 ]
 
 const CATEGORIES = [
@@ -33,6 +35,8 @@ const BROWSE_CITY_SLUGS = {
   orlando: 'Orlando',
   'las-vegas': 'Las Vegas',
   'new-orleans': 'New Orleans',
+  'kansas-city': 'Kansas City',
+  'austin':      'Austin',
 }
 
 function resolveBrowseCityParam(param) {
@@ -64,7 +68,7 @@ export default function BrowsePage() {
     city:      city !== 'all' ? city : undefined,
     category:  category !== 'all' ? category : undefined,
     maxBudget: budget,
-    limit:     40,
+    limit:     viewMode === 'map' ? 500 : 40,
   })
 
   // Client-side search + sort on top of server results

@@ -59,6 +59,28 @@ const CITIES = [
     experiences: 290,
     description: 'Jazz, Creole food, and the most unique culture in America.',
   },
+  {
+    id: 'kansas-city',
+    name: 'Kansas City',
+    emoji: '🥩',
+    lat: 39.0997,
+    lng: -94.5786,
+    color: '#ef4444',
+    tag: 'BBQ Capital',
+    experiences: 180,
+    description: 'World-famous BBQ, jazz history, and a thriving arts scene.',
+  },
+  {
+    id: 'austin',
+    name: 'Austin',
+    emoji: '🎸',
+    lat: 30.2672,
+    lng: -97.7431,
+    color: '#F5A623',
+    tag: 'Keep It Weird',
+    experiences: 220,
+    description: 'Live music capital of the world, tech hub, and incredible food.',
+  },
 ]
 
 const ARCS = [
@@ -67,6 +89,9 @@ const ARCS = [
   { startLat: 28.5383, startLng: -81.3792, endLat: 36.1699, endLng: -115.1398, color: '#a855f7' },
   { startLat: 36.1699, startLng: -115.1398, endLat: 29.9511, endLng: -90.0715, color: '#10b981' },
   { startLat: 29.9511, startLng: -90.0715, endLat: 40.7128, endLng: -74.0060, color: '#F5A623' },
+  { startLat: 29.9511, startLng: -90.0715, endLat: 39.0997, endLng: -94.5786, color: '#ef4444' },
+  { startLat: 39.0997, startLng: -94.5786, endLat: 30.2672, endLng: -97.7431, color: '#F5A623' },
+  { startLat: 30.2672, startLng: -97.7431, endLat: 36.1699, endLng: -115.1398, color: '#a855f7' },
 ]
 
 // How long the fly-to animation takes (ms) — keep in sync with pointOfView call below
