@@ -19,8 +19,39 @@ const CATEGORY_STYLES = {
   'Wellness':      'bg-[#b5e8d4] text-[#085041]',
 }
 
+// Map category + city to Unsplash search queries
+const UNSPLASH_QUERIES = {
+  'Food & Drink': 'restaurant food dining',
+  'Outdoors': 'outdoor nature adventure',
+  'Nightlife': 'nightlife city lights bar',
+  'Sports': 'sports activity recreation',
+  'Arts & Culture': 'art museum culture',
+  'Wellness': 'spa wellness relaxation',
+}
+
+const CITY_QUERIES = {
+  'New York City': 'new york city',
+  'Miami': 'miami beach',
+  'Orlando': 'orlando florida',
+  'Las Vegas': 'las vegas',
+  'New Orleans': 'new orleans',
+  'Austin': 'austin texas',
+  'Kansas City': 'kansas city',
+}
+
+function getUnsplashUrl(category, city, id) {
+  const key = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
+  if (!key) return null
+  const categoryQuery = UNSPLASH_QUERIES[category] || 'travel experience'
+  const cityQuery = CITY_QUERIES[city] || city || ''
+  const query = encodeURIComponent(`${cityQuery} ${categoryQuery}`)
+  // Use id as seed so same experience always gets same photo
+  const seed = id ? id.slice(0, 8) : Math.random().toString(36).slice(2)
+  return `https://source.unsplash.com/400x300/?${query}&sig=${seed}`
+}
+
 export default function ExperienceCard({ experience, showForYou = false }) {
-  const navigate       = useNavigate()
+  const navigate = useNavigate()
   const { isSaved, toggleSave, isSaving } = useWishlist()
 
   if (!experience) return null
@@ -35,6 +66,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const gradient = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
   const catStyle = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
   const isForYou = showForYou && _score && _score >= 60
+  const photoUrl = getUnsplashUrl(category, city, id)
 
   return (
     <div
@@ -42,24 +74,48 @@ export default function ExperienceCard({ experience, showForYou = false }) {
       onClick={() => navigate(`/experience/${id}`)}
     >
       {/* Image area */}
-      <div className={`relative h-44 bg-gradient-to-br ${gradient} flex items-center justify-center text-5xl`}>
-        <span style={{ fontSize: 48 }}>{image_emoji || '🌍'}</span>
+      <div className={`relative h-44 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={title}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              // Fallback to emoji if image fails
+              e.target.style.display = 'none'
+              e.target.nextSibling.style.display = 'flex'
+            }}
+          />
+        ) : null}
+
+        {/* Emoji fallback — hidden when photo loads, shown on error */}
+        <span
+          style={{ fontSize: 48, display: photoUrl ? 'none' : 'flex' }}
+          className="relative z-10"
+        >
+          {image_emoji || '🌍'}
+        </span>
+
+        {/* Dark overlay for text readability */}
+        {photoUrl && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+        )}
 
         {is_sponsored && (
-          <div className="absolute top-2 left-2 bg-white/90 text-[#854F0B] text-[10px] font-bold px-2 py-0.5 rounded-full border border-gold-brand/30">
+          <div className="absolute top-2 left-2 bg-white/90 text-[#854F0B] text-[10px] font-bold px-2 py-0.5 rounded-full border border-gold-brand/30 z-10">
             ✦ Sponsored
           </div>
         )}
 
         {isForYou && !is_sponsored && (
-          <div className="absolute bottom-2 left-2 bg-gold-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+          <div className="absolute bottom-2 left-2 bg-gold-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
             ✨ For You
           </div>
         )}
 
         {/* Heart button */}
         <button
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all z-10
             ${saved
               ? 'bg-red-50 border border-red-200 text-red-500'
               : 'bg-white/90 border border-blue-brand/15 text-gray-400 hover:text-red-400'

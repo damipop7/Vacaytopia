@@ -66,10 +66,11 @@ export default function AppLayout() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
-          <NavLink to="/browse" label="Browse" active={location.pathname.startsWith('/browse')} />
-          {user && (
-            <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
-          )}
+        <NavLink to="/browse" label="Browse" active={location.pathname.startsWith('/browse')} />
+        <NavLink to="/itinerary" label="✨ AI Itinerary" active={location.pathname.startsWith('/itinerary')} />
+        {user && (
+          <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
+        )}
         </div>
 
         <div className="flex items-center gap-3 ml-auto">

@@ -1,7 +1,8 @@
 import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+// import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
+import { Link, useNavigate } from 'react-router-dom';
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
 
@@ -144,33 +145,43 @@ export default function HomePage() {
             Vtopia matches your passions and budget to the best experiences in any city — food, events, outdoors, nightlife, and so much more.
           </p>
 
+
+
           {/* CTA row */}
           <div className="flex flex-wrap gap-3 mb-10">
+          <button
+            onClick={() => navigate('/browse')}
+            className="btn-primary text-base px-7 py-3.5"
+          >
+            Find Experiences
+          </button>
+                  
+          <Link
+            to="/itinerary"
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:from-blue-500 hover:to-blue-400 transition"
+          >
+            ✨ Build My Itinerary →
+          </Link>
+                  
+          {!user && (
             <button
-              onClick={() => navigate('/browse')}
-              className="btn-primary text-base px-7 py-3.5"
+              onClick={() => navigate('/auth')}
+              className="px-6 py-3.5 rounded-pill border-2 border-white/30 text-..."
             >
-              Find Experiences
+              Create free account
             </button>
-            {!user && (
-              <button
-                onClick={() => navigate('/auth')}
-                className="px-6 py-3.5 rounded-pill border-2 border-white/30 text-white font-bold text-base hover:bg-white/10 transition-all"
-              >
-                Create free account
-              </button>
-            )}
-            {user && (
-              <button
-                type="button"
-                onClick={() => navigate('/interests')}
-                className="px-6 py-3.5 rounded-pill border-2 border-gold-brand/60 text-gold-brand font-bold text-base hover:bg-gold-brand/10 transition-all"
-              >
-                Personalise feed
-              </button>
-            )}
+          )}
+          {user && (
+            <button
+              type="button"
+              onClick={() => navigate('/interests')}
+              className="px-6 py-3.5 rounded-pill border-2 border-gold-brand/60 ..."
+            >
+              Personalise feed
+            </button>
+          )}
           </div>
-
+  
           {/* Trust micro-stats */}
           <div className="flex gap-6 flex-wrap">
             {[['2,400+','Experiences'],['18K+','Travelers'],['5','Cities'],['98%','Satisfaction']].map(([n,l]) => (

@@ -15,6 +15,8 @@ import NotFoundPage   from './pages/NotFoundPage'
 import PrivacyPage    from './pages/PrivacyPage'
 import InterestsPage  from './pages/InterestsPage'
 import AdminPage      from './pages/AdminPage'
+import ItineraryQuiz    from "./pages/ItineraryQuiz";
+import ItineraryResults from "./pages/ItineraryResults";
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -45,6 +47,8 @@ export default function App() {
               <Route path="/experience/:id" element={<ExperiencePage />} />
               <Route path="/guide/:id"      element={<GuidePage />} />
               <Route path="/privacy"        element={<PrivacyPage />} />
+              <Route path="/itinerary"         element={<ItineraryQuiz />} />
+              <Route path="/itinerary/results" element={<ItineraryResults />} />
             </Route>
 
             <Route path="/auth"          element={<AuthPage />} />
