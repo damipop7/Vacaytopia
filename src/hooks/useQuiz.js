@@ -3,8 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 
 export function useLatestQuiz() {
-  const { user } = useAuthStore()
-
+  const { user, loading: authLoading } = useAuthStore()
   return useQuery({
     queryKey: ['quiz', user?.id],
     queryFn: async () => {
@@ -18,7 +17,7 @@ export function useLatestQuiz() {
       if (error) throw error
       return data
     },
-    enabled: !!user,
+    enabled: !authLoading && !!user,
   })
 }
 
