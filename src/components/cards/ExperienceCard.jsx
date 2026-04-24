@@ -19,35 +19,80 @@ const CATEGORY_STYLES = {
   'Wellness':      'bg-[#b5e8d4] text-[#085041]',
 }
 
-// Map category + city to Unsplash search queries
-const UNSPLASH_QUERIES = {
-  'Food & Drink': 'restaurant food dining',
-  'Outdoors': 'outdoor nature adventure',
-  'Nightlife': 'nightlife city lights bar',
-  'Sports': 'sports activity recreation',
-  'Arts & Culture': 'art museum culture',
-  'Wellness': 'spa wellness relaxation',
+const PHOTOS = {
+  'Miami': {
+    'Food & Drink':  'photo-1414235077428-338989a2e8c0',
+    'Outdoors':      'photo-1506905925346-21bda4d32df4',
+    'Nightlife':     'photo-1516450360452-9312f5e86fc7',
+    'Sports':        'photo-1571019613454-1cb2f99b2d8b',
+    'Arts & Culture':'photo-1533106418989-88406c7cc8ca',
+    'Wellness':      'photo-1540555700478-4be289fbecef',
+  },
+  'New York City': {
+    'Food & Drink':  'photo-1555396273-367ea4eb4db5',
+    'Outdoors':      'photo-1534430480872-3498386e7856',
+    'Nightlife':     'photo-1496196614460-48988a57fccf',
+    'Sports':        'photo-1461896836934-ffe607ba8211',
+    'Arts & Culture':'photo-1549388604-817d15aa0110',
+    'Wellness':      'photo-1544161515-4ab6ce6db874',
+  },
+  'Orlando': {
+    'Food & Drink':  'photo-1565299624946-b28f40a0ae38',
+    'Outdoors':      'photo-1500534314209-a25ddb2bd429',
+    'Nightlife':     'photo-1470229722913-7c0e2dbbafd3',
+    'Sports':        'photo-1579952363873-27f3bade9f55',
+    'Arts & Culture':'photo-1513364776144-60967b0f800f',
+    'Wellness':      'photo-1600334089648-b0d9d3028eb2',
+  },
+  'Las Vegas': {
+    'Food & Drink':  'photo-1504674900247-0877df9cc836',
+    'Outdoors':      'photo-1581833971358-2c8b550f87b3',
+    'Nightlife':     'photo-1605833556294-ea5c2a1d8d9a',
+    'Sports':        'photo-1504016798967-59a258a96615',
+    'Arts & Culture':'photo-1541417904950-b855846fe074',
+    'Wellness':      'photo-1515377905703-c4788e51af15',
+  },
+  'New Orleans': {
+    'Food & Drink':  'photo-1466978913421-dad2ebd01d17',
+    'Outdoors':      'photo-1568026762797-e3a44f1eddf0',
+    'Nightlife':     'photo-1504196606672-aef5c9cefc92',
+    'Sports':        'photo-1508098682722-e99c43a406b2',
+    'Arts & Culture':'photo-1572116469696-31de0f17cc34',
+    'Wellness':      'photo-1519824145371-296894a0daa9',
+  },
+  'Austin': {
+    'Food & Drink':  'photo-1558618666-fcd25c85cd64',
+    'Outdoors':      'photo-1531366936337-7c912a4589a7',
+    'Nightlife':     'photo-1493225457124-a3eb161ffa5f',
+    'Sports':        'photo-1517649763962-0c623066013b',
+    'Arts & Culture':'photo-1545987796-200677ee1011',
+    'Wellness':      'photo-1506126613408-eca07ce68773',
+  },
+  'Kansas City': {
+    'Food & Drink':  'photo-1529543544282-ea669407fca3',
+    'Outdoors':      'photo-1441974231531-c6227db76b6e',
+    'Nightlife':     'photo-1514525253161-7a46d19cd819',
+    'Sports':        'photo-1540747913346-19212a4b32a6',
+    'Arts & Culture':'photo-1578662996442-48f60103fc96',
+    'Wellness':      'photo-1600618528240-fb9fc964b853',
+  },
 }
 
-const CITY_QUERIES = {
-  'New York City': 'new york city',
-  'Miami': 'miami beach',
-  'Orlando': 'orlando florida',
-  'Las Vegas': 'las vegas',
-  'New Orleans': 'new orleans',
-  'Austin': 'austin texas',
-  'Kansas City': 'kansas city',
+const FALLBACK_PHOTOS = {
+  'Food & Drink':  'photo-1414235077428-338989a2e8c0',
+  'Outdoors':      'photo-1506905925346-21bda4d32df4',
+  'Nightlife':     'photo-1516450360452-9312f5e86fc7',
+  'Sports':        'photo-1571019613454-1cb2f99b2d8b',
+  'Arts & Culture':'photo-1533106418989-88406c7cc8ca',
+  'Wellness':      'photo-1540555700478-4be289fbecef',
 }
 
-function getUnsplashUrl(category, city, id) {
-  const key = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
-  if (!key) return null
-  const categoryQuery = UNSPLASH_QUERIES[category] || 'travel experience'
-  const cityQuery = CITY_QUERIES[city] || city || ''
-  const query = encodeURIComponent(`${cityQuery} ${categoryQuery}`)
-  // Use id as seed so same experience always gets same photo
-  const seed = id ? id.slice(0, 8) : Math.random().toString(36).slice(2)
-  return `https://source.unsplash.com/400x300/?${query}&sig=${seed}`
+function getPhotoUrl(category, city) {
+  const photoId =
+    PHOTOS[city]?.[category] ||
+    FALLBACK_PHOTOS[category] ||
+    'photo-1476514525535-07fb3b4ae5f1'
+  return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
 export default function ExperienceCard({ experience, showForYou = false }) {
@@ -66,40 +111,21 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const gradient = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
   const catStyle = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
   const isForYou = showForYou && _score && _score >= 60
-  const photoUrl = getUnsplashUrl(category, city, id)
+  const photoUrl = getPhotoUrl(category, city)
 
   return (
     <div
       className="card cursor-pointer overflow-hidden group"
       onClick={() => navigate(`/experience/${id}`)}
     >
-      {/* Image area */}
-      <div className={`relative h-44 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
-        {photoUrl ? (
-          <img
-            src={photoUrl}
-            alt={title}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              // Fallback to emoji if image fails
-              e.target.style.display = 'none'
-              e.target.nextSibling.style.display = 'flex'
-            }}
-          />
-        ) : null}
-
-        {/* Emoji fallback — hidden when photo loads, shown on error */}
-        <span
-          style={{ fontSize: 48, display: photoUrl ? 'none' : 'flex' }}
-          className="relative z-10"
-        >
-          {image_emoji || '🌍'}
-        </span>
-
-        {/* Dark overlay for text readability */}
-        {photoUrl && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-        )}
+      <div className={`relative h-44 bg-gradient-to-br ${gradient} overflow-hidden`}>
+        <img
+          src={photoUrl}
+          alt={title}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => { e.target.style.display = 'none' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
         {is_sponsored && (
           <div className="absolute top-2 left-2 bg-white/90 text-[#854F0B] text-[10px] font-bold px-2 py-0.5 rounded-full border border-gold-brand/30 z-10">
@@ -113,7 +139,6 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           </div>
         )}
 
-        {/* Heart button */}
         <button
           className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all z-10
             ${saved
@@ -130,7 +155,6 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         </button>
       </div>
 
-      {/* Body */}
       <div className="p-4">
         <span className={`tag-category ${catStyle} mb-2`}>{category}</span>
 
@@ -155,7 +179,6 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
           <div>
             <div className="font-bold text-blue-brand text-base">
