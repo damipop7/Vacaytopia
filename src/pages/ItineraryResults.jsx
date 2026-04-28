@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import ExperienceCard from "../components/experiences/ExperienceCard";
 
 const CITY_LABELS = {
   nyc: "New York City",
@@ -16,6 +17,18 @@ const BUDGET_LABELS = {
   budget: "$100-200/day",
   mid: "$200-350/day",
   premium: "$350-500/day",
+};
+
+// Map quiz interest values → experience tags stored in DB
+const INTEREST_TAG_MAP = {
+  food: ["Food & Drink", "food", "restaurants", "dining"],
+  outdoors: ["Outdoors", "outdoor", "nature", "parks"],
+  nightlife: ["Nightlife", "bars", "clubs", "nightlife"],
+  arts: ["Arts & Culture", "arts", "culture", "museums"],
+  sports: ["Sports", "sports", "fitness"],
+  wellness: ["Wellness", "wellness", "spa", "yoga"],
+  shopping: ["shopping", "markets"],
+  music: ["music", "live music", "concerts"],
 };
 
 function LoadingScreen({ city }) {
@@ -151,6 +164,130 @@ function DayCard({ day, index }) {
   );
 }
 
+// ── NEW: Embedded experiences section ────────────────────────────────────────
+function BookableExperiences({ cityKey, interests = [] }) {
+  const [experiences, setExperiences] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const cityName = CITY_LABELS[cityKey];
+
+  useEffect(() => {
+    if (!cityName) { setLoading(false); return; }
+    fetchExperiences();
+  }, [cityKey]);
+
+  async function fetchExperiences() {
+    setLoading(true);
+    try {
+      // Build tag list from user's selected interests
+      const interestTags = interests.flatMap((i) => INTEREST_TAG_MAP[i] || []);
+
+      let query = supabase
+        .from("experiences")
+        .select(`
+          id, title, city, category, price_per_person,
+          duration_label, rating, review_count,
+          image_emoji, image_gradient, is_sponsored, tags,
+          guides:guide_id (first_name, rating)
+        `)
+        .eq("city", cityName)
+        .eq("is_active", true)
+        .limit(6);
+
+      // If we have interest tags, prefer matching ones via overlap
+      // Falls back to all active experiences for city if no tags match
+      if (interestTags.length > 0) {
+        // ov = array overlap — returns rows where tags && interestTags
+        const { data: matched, error: matchErr } = await query
+          .overlaps("tags", interestTags)
+          .order("is_featured", { ascending: false })
+          .order("rating", { ascending: false });
+
+        if (!matchErr && matched && matched.length >= 3) {
+          setExperiences(matched);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback: top-rated active experiences in city (no tag filter)
+      const { data: fallback } = await supabase
+        .from("experiences")
+        .select(`
+          id, title, city, category, price_per_person,
+          duration_label, rating, review_count,
+          image_emoji, image_gradient, is_sponsored, tags,
+          guides:guide_id (first_name, rating)
+        `)
+        .eq("city", cityName)
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("rating", { ascending: false })
+        .limit(6);
+
+      setExperiences(fallback || []);
+    } catch (_) {
+      setExperiences([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Don't render the section at all if no experiences found
+  if (!loading && experiences.length === 0) return null;
+
+  return (
+    <div className="mt-10">
+      {/* Section header */}
+      <div className="flex items-end justify-between mb-6">
+        <div>
+          <div className="text-xs text-blue-400 uppercase tracking-widest font-semibold mb-1">
+            Book directly through Vtopia
+          </div>
+          <h2 className="text-xl font-bold text-white">
+            Experiences in {cityName}
+          </h2>
+          <p className="text-white/50 text-sm mt-1">
+            Handpicked to match your itinerary — reserve your spot now
+          </p>
+        </div>
+        <Link
+          to={`/browse?city=${cityKey}`}
+          className="hidden md:flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition flex-shrink-0"
+        >
+          See all →
+        </Link>
+      </div>
+
+      {/* Cards */}
+      {loading ? (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-72 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {experiences.map((exp) => (
+            <ExperienceCard key={exp.id} experience={exp} />
+          ))}
+        </div>
+      )}
+
+      {/* Mobile "see all" link */}
+      <div className="mt-5 md:hidden text-center">
+        <Link
+          to={`/browse?city=${cityKey}`}
+          className="text-sm text-blue-400 hover:text-blue-300 transition"
+        >
+          See all experiences in {cityName} →
+        </Link>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ItineraryResults() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -285,6 +422,12 @@ export default function ItineraryResults() {
         {activeTab === "itinerary" && (
           <div className="flex flex-col gap-4">
             {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
+
+            {/* ── Bookable experiences injected below day cards ── */}
+            <BookableExperiences
+              cityKey={answers.city}
+              interests={answers.interests || []}
+            />
           </div>
         )}
         {activeTab === "hotels" && (
