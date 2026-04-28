@@ -17,6 +17,7 @@ import InterestsPage  from './pages/InterestsPage'
 import AdminPage      from './pages/AdminPage'
 import ItineraryQuiz    from "./pages/ItineraryQuiz";
 import ItineraryResults from "./pages/ItineraryResults";
+import ItineraryView from "./pages/ItineraryView";
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/privacy"        element={<PrivacyPage />} />
               <Route path="/itinerary"         element={<ItineraryQuiz />} />
               <Route path="/itinerary/results" element={<ItineraryResults />} />
+              <Route path="/itinerary/:id" element={<ItineraryView />} />
             </Route>
 
             <Route path="/auth"          element={<AuthPage />} />
