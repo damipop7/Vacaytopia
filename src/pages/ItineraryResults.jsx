@@ -105,6 +105,15 @@ function TimeBlock({ period, data, icon }) {
         <h4 className="font-bold text-base mb-1">{data.title}</h4>
         <p className="text-white/60 text-sm leading-relaxed">{data.description}</p>
         {data.tip && <div className="mt-2 text-xs text-blue-300 bg-blue-600/10 border border-blue-500/20 rounded-lg px-3 py-2">💡 {data.tip}</div>}
+        {data.experienceId && (
+          <Link
+            to={`/experience/${data.experienceId}`}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 transition"
+            onClick={(e) => e.stopPropagation()}
+          >
+            🎫 Book on Vtopia →
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -223,7 +232,7 @@ function ShareButton({ itineraryId, headline }) {
   async function handleShare() {
     const url = `${window.location.origin}/itinerary/${itineraryId}`;
     if (navigator.share) {
-      try { await navigator.share({ title: headline, text: "Check out my Vtopia trip plan!", url }); return; } catch (_) {}
+      try { await navigator.share({ title: headline, text: `Check out my Vtopia trip plan! ${url}`, url }); return; } catch (_) {}
     }
     await navigator.clipboard.writeText(url);
     setCopied(true);

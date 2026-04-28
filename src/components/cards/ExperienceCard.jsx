@@ -72,7 +72,7 @@ const PHOTOS = {
     'Food & Drink':  'photo-1529543544282-ea669407fca3',
     'Outdoors':      'photo-1441974231531-c6227db76b6e',
     'Nightlife':     'photo-1514525253161-7a46d19cd819',
-    'Sports':        'photo-1540747913346-19212a4b32a6',
+    'Sports':        'photo-1461896836934-ffe607ba8211',
     'Arts & Culture':'photo-1578662996442-48f60103fc96',
     'Wellness':      'photo-1600618528240-fb9fc964b853',
   },
