@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import ExperienceCard from "../components/experiences/ExperienceCard";
+import ExperienceCard from "../components/cards/ExperienceCard";
 
 const CITY_LABELS = {
   nyc: "New York City",
