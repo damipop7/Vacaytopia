@@ -3,6 +3,9 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 const CITY_LABELS = {
   nyc: "New York City",
   miami: "Miami",
@@ -271,12 +274,23 @@ export default function ItineraryResults() {
   async function generateItinerary() {
     try {
       setStatus("loading");
-      const { data, error: fnError } = await supabase.functions.invoke("generate-itinerary", {
-        body: { answers },
-      });
-      if (fnError) throw new Error(fnError.message || String(fnError));
-      if (data?.error) throw new Error(data.error);
-      const parsed = data?.itinerary;
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-itinerary`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ answers }),
+        }
+      );
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.error || `Server error ${response.status}`);
+      }
+      const { itinerary: parsed } = await response.json();
       if (!parsed) throw new Error("No itinerary returned from server");
       setItinerary(parsed);
       setStatus("success");
