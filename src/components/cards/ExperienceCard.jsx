@@ -111,12 +111,11 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
-    image_emoji, image_gradient, is_sponsored, _score, guides,
-    source, lat, lng,
+    image_emoji, image_gradient, is_sponsored, _score,
+    source, website,
   } = experience
 
-  const isOSM    = source === 'osm'
-  const hasCoords = lat != null && lng != null
+  const isOSM = source === 'osm'
 
   const saved          = isSaved(id)
   const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
@@ -180,17 +179,6 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           {title}
         </h3>
 
-        {guides?.first_name && (
-          <div className="text-[10px] text-gray-500 mb-2 flex items-center gap-1 flex-wrap">
-            <span className="font-semibold text-blue-brand/80">Local host</span>
-            <span>·</span>
-            <span>{guides.first_name}</span>
-            {guides.rating > 0 && (
-              <span className="text-gold-brand">★ {guides.rating}</span>
-            )}
-          </div>
-        )}
-
         <div className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
           <span>{city}</span>
           {duration_label && <><span>·</span><span>{duration_label}</span></>}
@@ -215,15 +203,25 @@ export default function ExperienceCard({ experience, showForYou = false }) {
             </div>
           )}
           {isOSM ? (
-            hasCoords && (
+            website ? (
               <a
-                href={`https://maps.google.com/?q=${lat},${lng}`}
+                href={website}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
-                View on Google Maps ↗
+                Visit website →
+              </a>
+            ) : (
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(title + ' ' + city)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Search on Google →
               </a>
             )
           ) : (

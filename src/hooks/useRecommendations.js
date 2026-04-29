@@ -106,7 +106,7 @@ export function useRecommendations(filters = {}) {
     queryFn: async () => {
       let query = supabase
         .from('experiences')
-        .select(`*, guides ( id, first_name, last_name, avatar_url, rating )`)
+        .select('*')
         .eq('is_active', true)
 
       if (city && city !== 'all')          query = query.eq('city', city)

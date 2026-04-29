@@ -41,6 +41,34 @@ function buildPrompt(answers: any, experiences: Experience[]): string {
   const days = nights + 1;
   const extras = answers.extras ? `\nExtra context: ${answers.extras}` : "";
 
+  // New quiz fields (backwards-compatible: may be absent in old requests)
+  const travelerGroup: string = answers.travelerGroup || "";
+  const helpNeeded: string[] = Array.isArray(answers.helpNeeded) ? answers.helpNeeded : [];
+
+  const groupLine = travelerGroup
+    ? `\nGroup type: ${travelerGroup}`
+    : "";
+
+  const helpLine = helpNeeded.length > 0 && !helpNeeded.includes("none")
+    ? `\nNeeds help with: ${helpNeeded.join(", ")}`
+    : "";
+
+  const helpInstructions = [
+    helpNeeded.includes("transport")    && "- Include Uber/Lyft cost estimates and pickup tips for key locations.",
+    helpNeeded.includes("hotels")       && "- Give detailed hotel recommendations: specific neighborhoods, proximity to attractions, and what makes each stand out for this group type.",
+    helpNeeded.includes("restaurants")  && "- Flag which restaurants in the plan require advance reservations and how far ahead to book.",
+    helpNeeded.includes("activities")   && "- Flag which activities need to be pre-booked, how far in advance, and where to book them.",
+    helpNeeded.includes("flights")      && "- Add a brief note on the best airports to fly into and ideal arrival/departure timing for this destination.",
+  ].filter(Boolean).join("\n");
+
+  const groupInstructions = travelerGroup
+    ? `- Tailor pace, activity intensity, and logistics to a ${travelerGroup} group.`
+    : "";
+
+  const personalizationSection = (helpInstructions || groupInstructions)
+    ? `\n\nPersonalization instructions:\n${[groupInstructions, helpInstructions].filter(Boolean).join("\n")}`
+    : "";
+
   const catalogSection = experiences.length > 0
     ? `\n\nReal bookable experiences on Vtopia for ${city}:\n${
         experiences
@@ -49,7 +77,7 @@ function buildPrompt(answers: any, experiences: Experience[]): string {
       }\n\nWhen an activity slot fits one of the above experiences: include "experienceId" set to its UUID and set "cost" to its exact price (e.g. "$${experiences[0]?.price_per_person}/person"). For slots with no matching Vtopia experience, omit "experienceId".`
     : "";
 
-  return `You are a travel concierge. Create a ${days}-day itinerary for a ${answers.traveler} trip to ${city}. Budget: ${BUDGET_LABELS[answers.budget]} per person/day. Interests: ${answers.interests.join(", ")}. Hotel tier: ${BUDGET_HOTEL_TIER[answers.budget]}.${extras}${catalogSection}
+  return `You are a travel concierge. Create a ${days}-day itinerary for a ${answers.traveler || "traveler"} trip to ${city}. Budget: ${BUDGET_LABELS[answers.budget]} per person/day. Interests: ${answers.interests.join(", ")}. Hotel tier: ${BUDGET_HOTEL_TIER[answers.budget]}.${groupLine}${helpLine}${extras}${personalizationSection}${catalogSection}
 
 Keep all descriptions to 1-2 sentences max. Respond ONLY with this JSON structure, no markdown:
 

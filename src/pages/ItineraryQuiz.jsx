@@ -33,7 +33,24 @@ const TRAVELER_OPTIONS = [
   { id: "family", label: "Family", emoji: "👨‍👩‍👧" },
 ];
 
-const STEPS = ["city", "dates", "budget", "vibe", "traveler", "extras"];
+const HELP_NEEDED_OPTIONS = [
+  { id: "transport",    label: "Getting around",          emoji: "🚗", desc: "Uber / Lyft" },
+  { id: "hotels",       label: "Where to stay",           emoji: "🏨", desc: "Hotels & rentals" },
+  { id: "restaurants",  label: "Restaurant reservations", emoji: "🍽️", desc: "Reserve a table" },
+  { id: "activities",   label: "Activity bookings",       emoji: "🎟️", desc: "Pre-book experiences" },
+  { id: "flights",      label: "Flights",                 emoji: "✈️", desc: "Best airports & timing" },
+  { id: "none",         label: "None — just the itinerary", emoji: "🧳", desc: "" },
+];
+
+const TRAVELER_GROUP_OPTIONS = [
+  { id: "solo",        label: "Solo",               emoji: "🧍" },
+  { id: "couple",      label: "Couple",             emoji: "👫" },
+  { id: "friends",     label: "Friends (2–4)",      emoji: "👯" },
+  { id: "family",      label: "Family with kids",   emoji: "👨‍👩‍👧" },
+  { id: "large-group", label: "Large group (5+)",   emoji: "🎉" },
+];
+
+const STEPS = ["city", "dates", "budget", "vibe", "helpNeeded", "travelerGroup", "traveler", "extras"];
 
 export default function ItineraryQuiz() {
   const navigate = useNavigate();
@@ -44,6 +61,8 @@ export default function ItineraryQuiz() {
     endDate: "",
     budget: null,
     interests: [],
+    helpNeeded: [],
+    travelerGroup: null,
     traveler: null,
     extras: "",
   });
@@ -61,6 +80,19 @@ export default function ItineraryQuiz() {
     }));
   }
 
+  function toggleHelpNeeded(id) {
+    setAnswers((prev) => {
+      if (id === "none") return { ...prev, helpNeeded: ["none"] };
+      const without = prev.helpNeeded.filter((i) => i !== "none");
+      return {
+        ...prev,
+        helpNeeded: without.includes(id)
+          ? without.filter((i) => i !== id)
+          : [...without, id],
+      };
+    });
+  }
+
   function validate() {
     const e = {};
     if (currentStep === "city" && !answers.city) e.city = "Pick a city";
@@ -72,6 +104,8 @@ export default function ItineraryQuiz() {
     }
     if (currentStep === "budget" && !answers.budget) e.budget = "Pick a budget";
     if (currentStep === "vibe" && answers.interests.length === 0) e.interests = "Pick at least one";
+    if (currentStep === "helpNeeded" && answers.helpNeeded.length === 0) e.helpNeeded = "Select at least one option";
+    if (currentStep === "travelerGroup" && !answers.travelerGroup) e.travelerGroup = "Tell us who's coming";
     if (currentStep === "traveler" && !answers.traveler) e.traveler = "Who are you traveling with?";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -132,7 +166,7 @@ export default function ItineraryQuiz() {
           {/* STEP: City */}
           {currentStep === "city" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 1</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">Where are you headed?</h2>
               <p className="text-white/50 mb-8">We'll find real places and build your day-by-day plan.</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -159,7 +193,7 @@ export default function ItineraryQuiz() {
           {/* STEP: Dates */}
           {currentStep === "dates" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 2</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">When's the trip?</h2>
               <p className="text-white/50 mb-8">We'll tailor the itinerary to your exact schedule.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -198,7 +232,7 @@ export default function ItineraryQuiz() {
           {/* STEP: Budget */}
           {currentStep === "budget" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 3</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">What's your budget?</h2>
               <p className="text-white/50 mb-8">Per person, per day. We'll optimize every recommendation.</p>
               <div className="flex flex-col gap-3">
@@ -231,7 +265,7 @@ export default function ItineraryQuiz() {
           {/* STEP: Interests/Vibe */}
           {currentStep === "vibe" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 4</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">What's your vibe?</h2>
               <p className="text-white/50 mb-8">Select everything that sounds like you. Mix and match freely.</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -254,10 +288,63 @@ export default function ItineraryQuiz() {
             </div>
           )}
 
+          {/* STEP: Help needed */}
+          {currentStep === "helpNeeded" && (
+            <div className="animate-fadeIn">
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">What would you like us to sort out?</h2>
+              <p className="text-white/50 mb-8">We'll add recommendations to your plan.</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {HELP_NEEDED_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => toggleHelpNeeded(opt.id)}
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${
+                      answers.helpNeeded.includes(opt.id)
+                        ? "border-blue-500 bg-blue-600/20 shadow-md shadow-blue-600/20"
+                        : "border-white/10 bg-white/5 hover:border-white/30"
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">{opt.emoji}</div>
+                    <div className="text-sm font-medium">{opt.label}</div>
+                    {opt.desc && <div className="text-white/40 text-xs mt-0.5">{opt.desc}</div>}
+                  </button>
+                ))}
+              </div>
+              {errors.helpNeeded && <p className="text-red-400 text-sm mt-3">{errors.helpNeeded}</p>}
+            </div>
+          )}
+
+          {/* STEP: Traveler group */}
+          {currentStep === "travelerGroup" && (
+            <div className="animate-fadeIn">
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">Who's coming with you?</h2>
+              <p className="text-white/50 mb-8">We'll tailor recommendations to your group.</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {TRAVELER_GROUP_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setAnswers((p) => ({ ...p, travelerGroup: opt.id }))}
+                    className={`p-6 rounded-xl border text-center transition-all duration-200 ${
+                      answers.travelerGroup === opt.id
+                        ? "border-blue-500 bg-blue-600/20"
+                        : "border-white/10 bg-white/5 hover:border-white/30"
+                    }`}
+                  >
+                    <div className="text-4xl mb-2">{opt.emoji}</div>
+                    <div className="font-semibold text-sm">{opt.label}</div>
+                  </button>
+                ))}
+              </div>
+              {errors.travelerGroup && <p className="text-red-400 text-sm mt-3">{errors.travelerGroup}</p>}
+            </div>
+          )}
+
           {/* STEP: Traveler type */}
           {currentStep === "traveler" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 5</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">Who's coming?</h2>
               <p className="text-white/50 mb-8">This shapes the type of experiences we recommend.</p>
               <div className="grid grid-cols-2 gap-3">
@@ -283,7 +370,7 @@ export default function ItineraryQuiz() {
           {/* STEP: Extras */}
           {currentStep === "extras" && (
             <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step 6</p>
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
               <h2 className="text-3xl md:text-4xl font-bold mb-2">Anything specific?</h2>
               <p className="text-white/50 mb-8">Dietary needs, must-see places, celebrations, accessibility — anything helps.</p>
               <textarea
@@ -303,6 +390,8 @@ export default function ItineraryQuiz() {
                   <div><span className="text-white/40">Budget</span><br /><span className="font-semibold capitalize">{answers.budget}</span></div>
                   <div><span className="text-white/40">Traveling as</span><br /><span className="font-semibold capitalize">{answers.traveler}</span></div>
                   <div className="col-span-2"><span className="text-white/40">Interests</span><br /><span className="font-semibold">{answers.interests.map((i) => INTERESTS.find((x) => x.id === i)?.label).join(", ")}</span></div>
+                  {answers.travelerGroup && <div><span className="text-white/40">Group</span><br /><span className="font-semibold">{TRAVELER_GROUP_OPTIONS.find((x) => x.id === answers.travelerGroup)?.label}</span></div>}
+                  {answers.helpNeeded.length > 0 && <div className="col-span-2"><span className="text-white/40">Help needed</span><br /><span className="font-semibold">{answers.helpNeeded.map((i) => HELP_NEEDED_OPTIONS.find((x) => x.id === i)?.label).join(", ")}</span></div>}
                 </div>
               </div>
             </div>

@@ -127,7 +127,7 @@ function BookableExperiences({ cityKey, interests = [] }) {
       if (interestTags.length > 0) {
         const { data: matched, error: matchErr } = await supabase
           .from("experiences")
-          .select(`id, title, city, category, price_per_person, duration_label, rating, review_count, image_emoji, image_gradient, is_sponsored, tags, source, lat, lng`)
+          .select(`id, title, city, category, price_per_person, duration_label, rating, review_count, image_emoji, image_gradient, is_sponsored, tags, source, lat, lng, website, address`)
           .eq("city", cityName).eq("is_active", true)
           .overlaps("tags", interestTags)
           .order("is_featured", { ascending: false }).order("rating", { ascending: false }).limit(6);
@@ -135,7 +135,7 @@ function BookableExperiences({ cityKey, interests = [] }) {
       }
       const { data: fallback } = await supabase
         .from("experiences")
-        .select(`id, title, city, category, price_per_person, duration_label, rating, review_count, image_emoji, image_gradient, is_sponsored, tags, source, lat, lng`)
+        .select(`id, title, city, category, price_per_person, duration_label, rating, review_count, image_emoji, image_gradient, is_sponsored, tags, source, lat, lng, website, address`)
         .eq("city", cityName).eq("is_active", true)
         .order("is_featured", { ascending: false }).order("rating", { ascending: false }).limit(6);
       setExperiences(fallback || []);
