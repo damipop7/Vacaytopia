@@ -28,6 +28,8 @@ const CATEGORIES = [
 
 const SORTS = ['Recommended', 'Price ↑', 'Price ↓', 'Top Rated']
 
+const LIVE_CITIES = new Set(['Kansas City'])
+
 // Globe, marketing URLs, and itinerary quiz keys → display city names stored in DB
 const BROWSE_CITY_SLUGS = {
   'new-york-city': 'New York City',
@@ -86,7 +88,8 @@ export default function BrowsePage() {
       return (b._score ?? 0) - (a._score ?? 0) // Recommended = by score
     })
 
-  const cityName = CITIES.find(c => c.value === city)?.label.split(' ').slice(1).join(' ') || 'All Cities'
+  const cityName    = CITIES.find(c => c.value === city)?.label.split(' ').slice(1).join(' ') || 'All Cities'
+  const isComingSoon = city !== 'all' && !LIVE_CITIES.has(city)
 
   return (
     <div className="flex min-h-[calc(100vh-64px)]" style={{ background: 'var(--bg)' }}>
@@ -97,13 +100,31 @@ export default function BrowsePage() {
         {/* City */}
         <div>
           <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Destination</div>
-          <select
-            value={city}
-            onChange={e => setCity(e.target.value)}
-            className="input-field text-sm"
-          >
-            {CITIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          <div className="flex flex-col gap-1">
+            {CITIES.map(c => {
+              const isLive = c.value === 'all' || LIVE_CITIES.has(c.value)
+              return (
+                <button
+                  key={c.value}
+                  onClick={() => setCity(c.value)}
+                  className={`flex items-center justify-between gap-2 px-3 py-2 rounded-[9px] text-sm font-medium text-left transition-all ${
+                    city === c.value
+                      ? 'bg-blue-brand text-white'
+                      : 'text-gray-500 hover:bg-blue-tint hover:text-blue-brand border border-blue-brand/10'
+                  }`}
+                >
+                  <span>{c.label}</span>
+                  {!isLive && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                      city === c.value ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      Soon
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Budget */}
@@ -290,8 +311,22 @@ export default function BrowsePage() {
           </div>
         )}
 
+        {/* Coming soon state */}
+        {!isLoading && isComingSoon && (
+          <div className="text-center py-20">
+            <div className="text-5xl mb-4">🚧</div>
+            <div className="font-display font-bold text-xl text-[#0D1B3E] mb-2">{cityName} is coming soon</div>
+            <div className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
+              We're curating handpicked experiences in {cityName}. Check back soon — or explore what's live now in Kansas City.
+            </div>
+            <button onClick={() => setCity('Kansas City')} className="btn-primary text-sm">
+              Explore Kansas City
+            </button>
+          </div>
+        )}
+
         {/* Empty state */}
-        {!isLoading && filtered.length === 0 && !error && (
+        {!isLoading && filtered.length === 0 && !error && !isComingSoon && (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">🗺️</div>
             <div className="font-display font-bold text-xl text-[#0D1B3E] mb-2">No experiences found</div>

@@ -112,10 +112,11 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
     image_emoji, image_gradient, is_sponsored, _score, guides,
-    source,
+    source, lat, lng,
   } = experience
 
-  const isOSM = source === 'osm'
+  const isOSM    = source === 'osm'
+  const hasCoords = lat != null && lng != null
 
   const saved          = isSaved(id)
   const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
@@ -214,12 +215,17 @@ export default function ExperienceCard({ experience, showForYou = false }) {
             </div>
           )}
           {isOSM ? (
-            <button
-              className="text-xs px-3 py-1.5 rounded-lg border border-blue-brand/20 text-blue-brand hover:bg-blue-tint transition-colors font-medium"
-              onClick={(e) => { e.stopPropagation(); navigate(`/experience/${id}`) }}
-            >
-              See details →
-            </button>
+            hasCoords && (
+              <a
+                href={`https://maps.google.com/?q=${lat},${lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View on Google Maps ↗
+              </a>
+            )
           ) : (
             <button
               className="btn-primary text-xs px-3 py-1.5"
