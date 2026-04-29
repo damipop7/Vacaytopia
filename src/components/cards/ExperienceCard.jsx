@@ -112,7 +112,10 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
     image_emoji, image_gradient, is_sponsored, _score, guides,
+    source,
   } = experience
+
+  const isOSM = source === 'osm'
 
   const saved          = isSaved(id)
   const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
@@ -190,28 +193,41 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         <div className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
           <span>{city}</span>
           {duration_label && <><span>·</span><span>{duration_label}</span></>}
-          {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
+          {!isOSM && review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
-          <div>
-            <div className="font-bold text-blue-brand text-base">
-              ${price_per_person}
-              <span className="text-xs font-normal text-gray-400 ml-0.5">/person</span>
-            </div>
-            {rating > 0 && (
-              <div className="flex items-center gap-0.5 text-[11px] text-gray-500">
-                <span className="text-gold-brand">★</span>
-                <span>{rating}</span>
+          {isOSM ? (
+            <div /> /* empty left side keeps the button right-aligned */
+          ) : (
+            <div>
+              <div className="font-bold text-blue-brand text-base">
+                ${price_per_person}
+                <span className="text-xs font-normal text-gray-400 ml-0.5">/person</span>
               </div>
-            )}
-          </div>
-          <button
-            className="btn-primary text-xs px-3 py-1.5"
-            onClick={(e) => { e.stopPropagation(); navigate(`/book/${id}`) }}
-          >
-            Book Now
-          </button>
+              {rating > 0 && (
+                <div className="flex items-center gap-0.5 text-[11px] text-gray-500">
+                  <span className="text-gold-brand">★</span>
+                  <span>{rating}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {isOSM ? (
+            <button
+              className="text-xs px-3 py-1.5 rounded-lg border border-blue-brand/20 text-blue-brand hover:bg-blue-tint transition-colors font-medium"
+              onClick={(e) => { e.stopPropagation(); navigate(`/experience/${id}`) }}
+            >
+              See details →
+            </button>
+          ) : (
+            <button
+              className="btn-primary text-xs px-3 py-1.5"
+              onClick={(e) => { e.stopPropagation(); navigate(`/book/${id}`) }}
+            >
+              Book Now
+            </button>
+          )}
         </div>
       </div>
     </div>
