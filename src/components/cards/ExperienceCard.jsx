@@ -95,6 +95,8 @@ function getPhotoUrl(category, city) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
+export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl }
+
 export default function ExperienceCard({ experience, showForYou = false }) {
   const navigate = useNavigate()
   const { isSaved, toggleSave, isSaving } = useWishlist()
