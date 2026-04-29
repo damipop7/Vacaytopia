@@ -271,15 +271,13 @@ export default function ItineraryResults() {
   async function generateItinerary() {
     try {
       setStatus("loading");
-      const response = await fetch(
-        "https://vtxikcqasjxyjlxsxdof.supabase.co/functions/v1/generate-itinerary",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) }
-      );
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData?.error || "Error " + response.status);
-      }
-      const { itinerary: parsed } = await response.json();
+      const { data, error: fnError } = await supabase.functions.invoke("generate-itinerary", {
+        body: { answers },
+      });
+      if (fnError) throw new Error(fnError.message || String(fnError));
+      if (data?.error) throw new Error(data.error);
+      const parsed = data?.itinerary;
+      if (!parsed) throw new Error("No itinerary returned from server");
       setItinerary(parsed);
       setStatus("success");
 

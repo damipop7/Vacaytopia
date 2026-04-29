@@ -47,16 +47,16 @@ const PHOTOS = {
   'Las Vegas': {
     'Food & Drink':  'photo-1504674900247-0877df9cc836',
     'Outdoors':      'photo-1581833971358-2c8b550f87b3',
-    'Nightlife':     'photo-1605833556294-ea5c2a1d8d9a',
-    'Sports':        'photo-1504016798967-59a258a96615',
+    'Nightlife':     'photo-1514525253161-7a46d19cd819',
+    'Sports':        'photo-1579952363873-27f3bade9f55',
     'Arts & Culture':'photo-1541417904950-b855846fe074',
     'Wellness':      'photo-1515377905703-c4788e51af15',
   },
   'New Orleans': {
     'Food & Drink':  'photo-1466978913421-dad2ebd01d17',
-    'Outdoors':      'photo-1568026762797-e3a44f1eddf0',
+    'Outdoors':      'photo-1531366936337-7c912a4589a7',
     'Nightlife':     'photo-1504196606672-aef5c9cefc92',
-    'Sports':        'photo-1508098682722-e99c43a406b2',
+    'Sports':        'photo-1517649763962-0c623066013b',
     'Arts & Culture':'photo-1572116469696-31de0f17cc34',
     'Wellness':      'photo-1519824145371-296894a0daa9',
   },
@@ -95,7 +95,12 @@ function getPhotoUrl(category, city) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
-export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl }
+function getCategoryFallbackUrl(category) {
+  const photoId = FALLBACK_PHOTOS[category] || 'photo-1476514525535-07fb3b4ae5f1'
+  return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
+}
+
+export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl, getCategoryFallbackUrl }
 
 export default function ExperienceCard({ experience, showForYou = false }) {
   const navigate = useNavigate()
@@ -109,11 +114,12 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     image_emoji, image_gradient, is_sponsored, _score, guides,
   } = experience
 
-  const saved    = isSaved(id)
-  const gradient = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
-  const catStyle = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
-  const isForYou = showForYou && _score && _score >= 60
-  const photoUrl = getPhotoUrl(category, city)
+  const saved          = isSaved(id)
+  const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
+  const catStyle       = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
+  const isForYou       = showForYou && _score && _score >= 60
+  const photoUrl       = getPhotoUrl(category, city)
+  const fallbackPhoto  = getCategoryFallbackUrl(category)
 
   return (
     <div
@@ -125,7 +131,13 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           src={photoUrl}
           alt={title}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          onError={(e) => { e.target.style.display = 'none' }}
+          onError={(e) => {
+            if (e.target.src !== fallbackPhoto) {
+              e.target.src = fallbackPhoto
+            } else {
+              e.target.style.display = 'none'
+            }
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 

@@ -121,7 +121,6 @@ export function useRecommendations(filters = {}) {
       return data || []
     },
     staleTime: 1000 * 60 * 5, // cache experiences for 5 min
-    placeholderData: [],
   })
 
   // Score experiences client-side using cached user prefs

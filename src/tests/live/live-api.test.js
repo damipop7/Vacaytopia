@@ -106,22 +106,20 @@ describe('Edge function – generate-itinerary (LIVE)', () => {
 })
 
 describe('Unsplash photo URLs – HTTP reachability (LIVE)', () => {
-  // Spot-check one URL per city to avoid hammering Unsplash
-  const SPOT_CHECK = Object.entries(PHOTOS).map(([city, cats]) => ({
-    city,
-    category: 'Food & Drink',
-    photoId: cats['Food & Drink'],
-  }))
+  // Check every city+category combo — a 404 here means that card shows gradient instead of photo
+  const ALL_COMBOS = Object.entries(PHOTOS).flatMap(([city, cats]) =>
+    Object.entries(cats).map(([category, photoId]) => ({ city, category, photoId }))
+  )
 
-  it.each(SPOT_CHECK)(
-    '$city / Food & Drink photo returns HTTP 200',
+  it.each(ALL_COMBOS)(
+    '$city / $category photo returns HTTP 200',
     { timeout: 15000 },
-    async ({ city, photoId }) => {
+    async ({ city, category, photoId }) => {
       const url = `https://images.unsplash.com/${photoId}?w=100&h=75&fit=crop&auto=format&q=60`
       const res = await fetch(url, { method: 'HEAD' })
       expect(
         res.status,
-        `${city}: photo ID "${photoId}" returned ${res.status}. This photo may have been removed from Unsplash — card will show the gradient fallback instead.`
+        `${city} / ${category}: photo ID "${photoId}" returned ${res.status}. This photo has been removed from Unsplash — all ${city} ${category} cards will show gradient instead.`
       ).toBe(200)
     }
   )

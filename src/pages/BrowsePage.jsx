@@ -28,20 +28,21 @@ const CATEGORIES = [
 
 const SORTS = ['Recommended', 'Price ↑', 'Price ↓', 'Top Rated']
 
-// Globe + marketing URLs use slugs; filters use display city names from the DB
+// Globe, marketing URLs, and itinerary quiz keys → display city names stored in DB
 const BROWSE_CITY_SLUGS = {
   'new-york-city': 'New York City',
-  miami: 'Miami',
-  orlando: 'Orlando',
-  'las-vegas': 'Las Vegas',
-  'new-orleans': 'New Orleans',
-  'kansas-city': 'Kansas City',
-  'austin':      'Austin',
+  nyc:             'New York City',
+  miami:           'Miami',
+  orlando:         'Orlando',
+  'las-vegas':     'Las Vegas',
+  'new-orleans':   'New Orleans',
+  'kansas-city':   'Kansas City',
+  austin:          'Austin',
 }
 
 function resolveBrowseCityParam(param) {
   if (!param) return null
-  return BROWSE_CITY_SLUGS[param] || param
+  return BROWSE_CITY_SLUGS[param] || null
 }
 
 export default function BrowsePage() {
@@ -49,7 +50,7 @@ export default function BrowsePage() {
   const [searchParams]      = useSearchParams()
 
   const [city,     setCity]     = useState(
-    () => resolveBrowseCityParam(cityParam) || searchParams.get('city') || 'all'
+    () => resolveBrowseCityParam(cityParam) || resolveBrowseCityParam(searchParams.get('city')) || 'all'
   )
   const [category, setCategory] = useState('all')
   const [budget,   setBudget]   = useState(500)
