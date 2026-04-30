@@ -13,6 +13,7 @@
     "test:live": "vitest run --reporter=verbose src/tests/live"
   },
   "dependencies": {
+    "@sentry/react": "^10.51.0",
     "@stripe/react-stripe-js": "^6.1.0",
     "@stripe/stripe-js": "^9.0.1",
     "@supabase/supabase-js": "^2.101.1",

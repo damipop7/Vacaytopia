@@ -22,10 +22,10 @@ const CATEGORY_STYLES = {
 const PHOTOS = {
   'Miami': {
     'Food & Drink':  'photo-1414235077428-338989a2e8c0',
-    'Outdoors':      'photo-1506905925346-21bda4d32df4',
+    'Outdoors':      'photo-1507525428034-b723cf961d3e',
     'Nightlife':     'photo-1516450360452-9312f5e86fc7',
     'Sports':        'photo-1571019613454-1cb2f99b2d8b',
-    'Arts & Culture':'photo-1533106418989-88406c7cc8ca',
+    'Arts & Culture':'photo-1545987796-200677ee1011',
     'Wellness':      'photo-1540555700478-4be289fbecef',
   },
   'New York City': {
@@ -80,10 +80,10 @@ const PHOTOS = {
 
 const FALLBACK_PHOTOS = {
   'Food & Drink':  'photo-1414235077428-338989a2e8c0',
-  'Outdoors':      'photo-1506905925346-21bda4d32df4',
+  'Outdoors':      'photo-1441974231531-c6227db76b6e',
   'Nightlife':     'photo-1516450360452-9312f5e86fc7',
   'Sports':        'photo-1571019613454-1cb2f99b2d8b',
-  'Arts & Culture':'photo-1533106418989-88406c7cc8ca',
+  'Arts & Culture':'photo-1578662996442-48f60103fc96',
   'Wellness':      'photo-1540555700478-4be289fbecef',
 }
 
