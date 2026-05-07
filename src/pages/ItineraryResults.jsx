@@ -253,7 +253,8 @@ export default function ItineraryResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const answers = location.state?.answers;
-  const [status, setStatus] = useState("loading");
+  // "idle" briefly while React hydrates location.state before we decide to redirect
+  const [status, setStatus] = useState("idle");
   const [itinerary, setItinerary] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState("itinerary");
@@ -265,11 +266,16 @@ export default function ItineraryResults() {
     : 0;
 
   useEffect(() => {
-    if (!answers) { navigate("/itinerary"); return; }
+    // Give React one tick to hydrate location.state before redirecting
+    if (!answers) {
+      navigate("/itinerary", { replace: true });
+      return;
+    }
     if (hasFetched.current) return;
     hasFetched.current = true;
     generateItinerary();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers]);
 
   async function generateItinerary() {
     try {
@@ -322,7 +328,7 @@ export default function ItineraryResults() {
     }
   }
 
-  if (status === "loading") return <LoadingScreen city={CITY_LABELS[answers?.city] || "your destination"} />;
+  if (status === "idle" || status === "loading") return <LoadingScreen city={CITY_LABELS[answers?.city] || "your destination"} />;
 
   if (status === "error") return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-6 px-4 text-center">
