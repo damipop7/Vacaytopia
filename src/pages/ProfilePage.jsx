@@ -15,6 +15,7 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
   const [tab, setTab] = useState(location.state?.tab || defaultTab)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({})
+  const [saveError, setSaveError] = useState('')
   const { user, profile, updateProfile, signOut } = useAuthStore()
   const { wishlist, savedIds, isLoading: wlLoading } = useWishlist()
   const { bookings, isLoading: bkLoading } = useBookings()
@@ -31,8 +32,9 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
   const initials = profile ? `${profile.first_name?.[0]??''}${profile.last_name?.[0]??''}`.toUpperCase() : '?'
 
   const handleSave = async () => {
+    setSaveError('')
     try { await updateProfile(form); setEditing(false) }
-    catch (e) { alert(e.message) }
+    catch (e) { setSaveError(e.message || 'Could not save changes. Please try again.') }
   }
 
   const STATUS_STYLE = {
@@ -78,9 +80,12 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
                     <input className="input-field text-sm" defaultValue={profile?.last_name} onChange={e => setForm(f=>({...f,last_name:e.target.value}))} />
                   </div>
                 </div>
+                {saveError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-[9px] p-3 text-sm mb-3">{saveError}</div>
+                )}
                 <div className="flex gap-2">
                   <button onClick={handleSave} className="btn-primary text-sm px-4 py-2">Save Changes</button>
-                  <button onClick={() => setEditing(false)} className="btn-outline text-sm px-4 py-2">Cancel</button>
+                  <button onClick={() => { setEditing(false); setSaveError('') }} className="btn-outline text-sm px-4 py-2">Cancel</button>
                 </div>
               </div>
             )}
