@@ -13,12 +13,14 @@ const GuidePage        = lazy(() => import('./pages/GuidePage'))
 const AuthCallback     = lazy(() => import('./pages/AuthCallback'))
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage'))
 const PrivacyPage      = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage        = lazy(() => import('./pages/TermsPage'))
 const InterestsPage    = lazy(() => import('./pages/InterestsPage'))
 const AdminPage        = lazy(() => import('./pages/AdminPage'))
 const ItineraryQuiz    = lazy(() => import('./pages/ItineraryQuiz'))
 const ItineraryResults = lazy(() => import('./pages/ItineraryResults'))
 const ItineraryView    = lazy(() => import('./pages/ItineraryView'))
 const WorldCupPage     = lazy(() => import('./pages/WorldCupPage'))
+const KansasCityPage   = lazy(() => import('./pages/KansasCityPage'))
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -63,10 +65,12 @@ export default function App() {
                 <Route path="/experience/:id" element={<ExperiencePage />} />
                 <Route path="/guide/:id"      element={<GuidePage />} />
                 <Route path="/privacy"        element={<PrivacyPage />} />
+                <Route path="/terms"          element={<TermsPage />} />
                 <Route path="/itinerary"         element={<ItineraryQuiz />} />
                 <Route path="/itinerary/results" element={<ItineraryResults />} />
                 <Route path="/itinerary/:id" element={<ItineraryView />} />
                 <Route path="/world-cup"     element={<WorldCupPage />} />
+                <Route path="/kansas-city"   element={<KansasCityPage />} />
               </Route>
 
               <Route path="/auth"          element={<AuthPage />} />

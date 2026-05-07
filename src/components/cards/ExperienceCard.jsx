@@ -114,9 +114,43 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     duration_label, rating, review_count,
     image_gradient, is_sponsored, _score,
     source, website,
+    experience_type, ticket_url, delivery_url, maps_url,
   } = experience
 
   const isOSM = source === 'osm'
+
+  const UTM = '?utm_source=vtopia&utm_medium=referral&utm_campaign=wc2026'
+  function externalHref(url) {
+    if (!url) return null
+    return url.includes('?') ? `${url}&utm_source=vtopia&utm_medium=referral&utm_campaign=wc2026` : `${url}${UTM}`
+  }
+  const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + ' ' + city)}${UTM}`
+
+  // Resolve CTA config based on experience_type (falls back to legacy OSM/reservable logic)
+  function getCtaConfig() {
+    const type = experience_type ?? (isOSM ? 'free_no_booking' : 'reservable')
+    switch (type) {
+      case 'ticketed':
+        return { label: 'Get tickets →', href: externalHref(ticket_url) || `https://www.google.com/search?q=${encodeURIComponent(title + ' tickets ' + city)}${UTM}`, external: true }
+      case 'free_no_booking':
+        return { label: 'Get directions →', href: externalHref(maps_url) || mapsSearchUrl, external: true }
+      case 'food_delivery':
+        return { label: 'Order online →', href: externalHref(delivery_url) || externalHref(website) || mapsSearchUrl, external: true }
+      case 'outdoor_info':
+        return { label: 'View trail info →', href: externalHref(maps_url) || externalHref(website) || mapsSearchUrl, external: true }
+      case 'nightlife':
+        return { label: 'View details', href: null, navigate: `/experience/${id}` }
+      case 'shopping':
+        return { label: 'Visit website →', href: externalHref(website) || mapsSearchUrl, external: true }
+      case 'reservable':
+      default:
+        if (isOSM) return website
+          ? { label: 'Visit website →', href: externalHref(website), external: true }
+          : { label: 'Search Google →', href: `https://www.google.com/search?q=${encodeURIComponent(title + ' ' + city)}${UTM}`, external: true }
+        return { label: 'Book Now', href: null, navigate: `/book/${id}`, primary: true }
+    }
+  }
+  const cta = getCtaConfig()
 
   const saved          = isSaved(id)
   const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
@@ -191,9 +225,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
-          {isOSM ? (
-            <div /> /* empty left side keeps the button right-aligned */
-          ) : (
+          {price_per_person > 0 ? (
             <div>
               <div className="font-bold text-blue-brand text-base">
                 ${price_per_person}
@@ -206,35 +238,33 @@ export default function ExperienceCard({ experience, showForYou = false }) {
                 </div>
               )}
             </div>
-          )}
-          {isOSM ? (
-            website ? (
-              <a
-                href={website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Visit website →
-              </a>
-            ) : (
-              <a
-                href={`https://www.google.com/search?q=${encodeURIComponent(title + ' ' + city)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Search on Google →
-              </a>
-            )
           ) : (
+            <div className="text-xs font-semibold text-green-600">Free</div>
+          )}
+
+          {cta.external ? (
+            <a
+              href={cta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {cta.label}
+            </a>
+          ) : cta.primary ? (
             <button
               className="btn-primary text-xs px-3 py-1.5"
-              onClick={(e) => { e.stopPropagation(); navigate(`/book/${id}`) }}
+              onClick={(e) => { e.stopPropagation(); navigate(cta.navigate) }}
             >
-              Book Now
+              {cta.label}
+            </button>
+          ) : (
+            <button
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              onClick={(e) => { e.stopPropagation(); navigate(cta.navigate) }}
+            >
+              {cta.label}
             </button>
           )}
         </div>
