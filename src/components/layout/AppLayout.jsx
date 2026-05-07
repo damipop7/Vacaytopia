@@ -157,9 +157,9 @@ export default function AppLayout() {
         <BrandMark variant="light" className="text-base" />
         <span>© {new Date().getFullYear()} vtopia. We never sell your data.</span>
         <div className="flex gap-4">
-          <a href="#" className="hover:text-gold-brand transition-colors">Privacy</a>
-          <a href="#" className="hover:text-gold-brand transition-colors">Terms</a>
-          <a href="#" className="hover:text-gold-brand transition-colors">Support</a>
+          <Link to="/privacy" className="hover:text-gold-brand transition-colors">Privacy</Link>
+          <Link to="/privacy#terms" className="hover:text-gold-brand transition-colors">Terms</Link>
+          <a href="mailto:hello@vtopia.world" className="hover:text-gold-brand transition-colors">Support</a>
         </div>
       </footer>
     </div>

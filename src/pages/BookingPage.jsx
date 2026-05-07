@@ -166,9 +166,9 @@ function StripePaymentForm({ total, onSuccess, onBack, bookingId }) {
 
       <p className="text-center text-xs text-gray-400">
         By paying you agree to our{' '}
-        <a href="#" className="text-blue-brand">Terms</a>{' '}
+        <a href="/privacy#terms" className="text-blue-brand">Terms</a>{' '}
         and{' '}
-        <a href="#" className="text-blue-brand">Cancellation Policy</a>.
+        <a href="/privacy#cancellation" className="text-blue-brand">Cancellation Policy</a>.
       </p>
     </div>
   )

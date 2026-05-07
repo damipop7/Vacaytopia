@@ -154,8 +154,8 @@ export default function AuthPage() {
           {tab === 'signup' && (
             <p className="text-center text-xs text-gray-400 mt-4 leading-relaxed">
               By creating an account you agree to our{' '}
-              <a href="#" className="text-blue-brand">Terms</a> and{' '}
-              <a href="#" className="text-blue-brand">Privacy Policy</a>.
+              <a href="/privacy#terms" className="text-blue-brand">Terms</a> and{' '}
+              <a href="/privacy" className="text-blue-brand">Privacy Policy</a>.
               <br />🔒 We never sell your data. Ever.
             </p>
           )}
