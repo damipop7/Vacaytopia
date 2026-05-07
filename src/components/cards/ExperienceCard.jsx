@@ -100,6 +100,7 @@ function getCategoryFallbackUrl(category) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- shared display constants used across pages
 export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl, getCategoryFallbackUrl }
 
 export default function ExperienceCard({ experience, showForYou = false }) {
@@ -111,7 +112,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
-    image_emoji, image_gradient, is_sponsored, _score,
+    image_gradient, is_sponsored, _score,
     source, website,
   } = experience
 

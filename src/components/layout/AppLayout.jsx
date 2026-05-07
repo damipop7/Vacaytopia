@@ -19,7 +19,7 @@ export default function AppLayout() {
 
   const isAdmin = profile?.role === 'admin'
 
-  // Close dropdown when navigating to a new page
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentionally reset menu on navigation
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
 
   // Close dropdown when clicking anywhere outside it

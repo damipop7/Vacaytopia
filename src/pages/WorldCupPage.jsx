@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
@@ -105,7 +105,7 @@ function ShareCard() {
     const msg = MESSAGES[lang]
     const url = 'https://www.vtopia.world/world-cup'
     if (navigator.share) {
-      try { await navigator.share({ title: 'Vtopia × FIFA World Cup 2026', text: msg, url }); return } catch (_) {}
+      try { await navigator.share({ title: 'Vtopia × FIFA World Cup 2026', text: msg, url }); return } catch { /* user dismissed share sheet */ }
     }
     await navigator.clipboard.writeText(`${msg}\n${url}`)
     setCopied(true)

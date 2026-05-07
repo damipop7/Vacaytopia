@@ -199,7 +199,6 @@ export default function BookingPage() {
     specialRequests: '',
   })
   const [booking,     setBooking]     = useState(null)  // Supabase booking row
-  const [clientSecret, setClientSecret] = useState(null) // set when entering step 3
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
   const [shareCopied, setShareCopied] = useState(false)
