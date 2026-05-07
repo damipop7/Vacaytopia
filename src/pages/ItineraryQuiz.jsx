@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const CITIES = [
+  { id: "kansas-city", name: "Kansas City", emoji: "🥩", vibe: "BBQ & World Cup 2026", featured: true }, // TODO: re-enable post-World-Cup
   { id: "nyc", name: "New York City", emoji: "🗽", vibe: "Culture & Energy" },
   { id: "miami", name: "Miami", emoji: "🌴", vibe: "Beach & Nightlife" },
   { id: "orlando", name: "Orlando", emoji: "🎢", vibe: "Theme Parks & Fun" },
   { id: "las-vegas", name: "Las Vegas", emoji: "🎰", vibe: "Entertainment & Shows" },
   { id: "new-orleans", name: "New Orleans", emoji: "🎷", vibe: "Food & Music" },
   { id: "austin", name: "Austin", emoji: "🎸", vibe: "Music & Outdoors" },
-  { id: "kansas-city", name: "Kansas City", emoji: "🥩", vibe: "BBQ & Art" },
 ];
 
 const INTERESTS = [
@@ -26,12 +26,8 @@ const BUDGET_OPTIONS = [
   { id: "premium", label: "Premium", range: "$350–500/day", emoji: "✨", desc: "Boutique hotels, fine dining, VIP access" },
 ];
 
-const TRAVELER_OPTIONS = [
-  { id: "solo", label: "Solo", emoji: "🧍" },
-  { id: "couple", label: "Couple", emoji: "👫" },
-  { id: "friends", label: "Friend Group", emoji: "👥" },
-  { id: "family", label: "Family", emoji: "👨‍👩‍👧" },
-];
+// Derived from travelerGroup so we don't need a separate step
+const GROUP_TO_TRAVELER = { solo: "solo", couple: "couple", friends: "friends", "large-group": "friends", family: "family" };
 
 const HELP_NEEDED_OPTIONS = [
   { id: "transport",    label: "Getting around",          emoji: "🚗", desc: "Uber / Lyft" },
@@ -50,7 +46,7 @@ const TRAVELER_GROUP_OPTIONS = [
   { id: "large-group", label: "Large group (5+)",   emoji: "🎉" },
 ];
 
-const STEPS = ["city", "dates", "budget", "vibe", "helpNeeded", "travelerGroup", "traveler", "extras"];
+const STEPS = ["city", "dates", "budget", "vibe", "helpNeeded", "travelerGroup", "extras"];
 
 export default function ItineraryQuiz() {
   const navigate = useNavigate();
@@ -106,7 +102,6 @@ export default function ItineraryQuiz() {
     if (currentStep === "vibe" && answers.interests.length === 0) e.interests = "Pick at least one";
     if (currentStep === "helpNeeded" && answers.helpNeeded.length === 0) e.helpNeeded = "Select at least one option";
     if (currentStep === "travelerGroup" && !answers.travelerGroup) e.travelerGroup = "Tell us who's coming";
-    if (currentStep === "traveler" && !answers.traveler) e.traveler = "Who are you traveling with?";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -114,9 +109,12 @@ export default function ItineraryQuiz() {
   function next() {
     if (!validate()) return;
     if (step < STEPS.length - 1) {
+      // Derive traveler from travelerGroup when leaving that step
+      if (currentStep === "travelerGroup" && answers.travelerGroup) {
+        setAnswers((p) => ({ ...p, traveler: GROUP_TO_TRAVELER[p.travelerGroup] ?? "solo" }));
+      }
       setStep((s) => s + 1);
     } else {
-      // Navigate to results with quiz data
       navigate("/itinerary/results", { state: { answers } });
     }
   }
@@ -341,32 +339,6 @@ export default function ItineraryQuiz() {
             </div>
           )}
 
-          {/* STEP: Traveler type */}
-          {currentStep === "traveler" && (
-            <div className="animate-fadeIn">
-              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">Who's coming?</h2>
-              <p className="text-white/50 mb-8">This shapes the type of experiences we recommend.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {TRAVELER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setAnswers((p) => ({ ...p, traveler: opt.id }))}
-                    className={`p-6 rounded-xl border text-center transition-all duration-200 ${
-                      answers.traveler === opt.id
-                        ? "border-blue-500 bg-blue-600/20"
-                        : "border-white/10 bg-white/5 hover:border-white/30"
-                    }`}
-                  >
-                    <div className="text-4xl mb-2">{opt.emoji}</div>
-                    <div className="font-semibold">{opt.label}</div>
-                  </button>
-                ))}
-              </div>
-              {errors.traveler && <p className="text-red-400 text-sm mt-3">{errors.traveler}</p>}
-            </div>
-          )}
-
           {/* STEP: Extras */}
           {currentStep === "extras" && (
             <div className="animate-fadeIn">
@@ -388,9 +360,8 @@ export default function ItineraryQuiz() {
                   <div><span className="text-white/40">Destination</span><br /><span className="font-semibold">{CITIES.find((c) => c.id === answers.city)?.name}</span></div>
                   <div><span className="text-white/40">Dates</span><br /><span className="font-semibold">{nights} nights</span></div>
                   <div><span className="text-white/40">Budget</span><br /><span className="font-semibold capitalize">{answers.budget}</span></div>
-                  <div><span className="text-white/40">Traveling as</span><br /><span className="font-semibold capitalize">{answers.traveler}</span></div>
+                  <div><span className="text-white/40">Group</span><br /><span className="font-semibold">{TRAVELER_GROUP_OPTIONS.find((x) => x.id === answers.travelerGroup)?.label}</span></div>
                   <div className="col-span-2"><span className="text-white/40">Interests</span><br /><span className="font-semibold">{answers.interests.map((i) => INTERESTS.find((x) => x.id === i)?.label).join(", ")}</span></div>
-                  {answers.travelerGroup && <div><span className="text-white/40">Group</span><br /><span className="font-semibold">{TRAVELER_GROUP_OPTIONS.find((x) => x.id === answers.travelerGroup)?.label}</span></div>}
                   {answers.helpNeeded.length > 0 && <div className="col-span-2"><span className="text-white/40">Help needed</span><br /><span className="font-semibold">{answers.helpNeeded.map((i) => HELP_NEEDED_OPTIONS.find((x) => x.id === i)?.label).join(", ")}</span></div>}
                 </div>
               </div>

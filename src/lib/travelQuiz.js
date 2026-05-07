@@ -27,6 +27,7 @@ export const QUIZ_GROUP_TYPES = [
 ]
 
 export const QUIZ_CITIES = [
+  { value: 'Kansas City', label: '🥩 Kansas City', featured: true },  // TODO: re-enable post-World-Cup
   { value: 'all', label: "I'm flexible — surprise me" },
   { value: 'Miami', label: 'Miami' },
   { value: 'New York City', label: 'New York City' },
