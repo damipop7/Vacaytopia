@@ -1,8 +1,7 @@
 import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
-// import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
-import { Link, useNavigate } from 'react-router-dom';
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
 
@@ -166,7 +165,7 @@ export default function HomePage() {
           {!user && (
             <button
               onClick={() => navigate('/auth')}
-              className="px-6 py-3.5 rounded-pill border-2 border-white/30 text-..."
+              className="px-6 py-3.5 rounded-pill border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-all"
             >
               Create free account
             </button>
@@ -175,7 +174,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => navigate('/interests')}
-              className="px-6 py-3.5 rounded-pill border-2 border-gold-brand/60 ..."
+              className="px-6 py-3.5 rounded-pill border-2 border-gold-brand/60 text-white font-semibold hover:bg-gold-brand/10 transition-all"
             >
               Personalise feed
             </button>
