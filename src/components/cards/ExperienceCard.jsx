@@ -133,6 +133,10 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         <img
           src={photoUrl}
           alt={title}
+          width={400}
+          height={300}
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             if (e.target.src !== fallbackPhoto) {
