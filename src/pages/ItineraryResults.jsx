@@ -274,13 +274,15 @@ export default function ItineraryResults() {
   async function generateItinerary() {
     try {
       setStatus("loading");
+      const { data: { session } } = await supabase.auth.getSession()
+      const authToken = session?.access_token || SUPABASE_ANON_KEY
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-itinerary`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${authToken}`,
             apikey: SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ answers }),
