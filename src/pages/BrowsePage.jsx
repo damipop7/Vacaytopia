@@ -58,13 +58,11 @@ export default function BrowsePage() {
   const { city: cityParam } = useParams()
   const [searchParams]      = useSearchParams()
 
-  // Redirect inactive city URLs to Kansas City when in single-city mode
-  // TODO: re-enable post-World-Cup — remove this redirect block
+  // TODO: re-enable post-World-Cup — remove shouldRedirect logic
   const resolvedCityParam = resolveBrowseCityParam(cityParam)
-  if (resolvedCityParam && !isCityActive(resolvedCityParam) && SINGLE_CITY_MODE) {
-    return <Navigate to="/browse/kansas-city" replace />
-  }
+  const shouldRedirect = !!(resolvedCityParam && !isCityActive(resolvedCityParam) && SINGLE_CITY_MODE)
 
+  // All hooks must be called before any early return (Rules of Hooks)
   const [city,     setCity]     = useState(
     () => resolveBrowseCityParam(cityParam) || resolveBrowseCityParam(searchParams.get('city')) || 'all'
   )
@@ -113,6 +111,9 @@ export default function BrowsePage() {
     : city !== 'all'
     ? `Explore handpicked experiences in ${cityName} — food, outdoors, nightlife, arts, and more. Book local adventures with Vtopia.`
     : 'Discover the best local experiences across US cities. Personalized travel recommendations for food, outdoors, nightlife, arts, and wellness.'
+
+  // TODO: re-enable post-World-Cup — remove this redirect
+  if (shouldRedirect) return <Navigate to="/browse/kansas-city" replace />
 
   return (
     <>
