@@ -77,6 +77,10 @@ function StripePaymentForm({ total, onSuccess, onBack, bookingId }) {
 
     // 2. Fetch clientSecret from our edge function
     try {
+      // getUser() forces a server-side token validation, ensuring the session
+      // hasn't expired before we hit the payment edge function.
+      const { data: { user: sessionUser }, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !sessionUser) throw new Error('Session expired. Please sign in again.')
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,

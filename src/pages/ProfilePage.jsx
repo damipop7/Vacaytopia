@@ -16,6 +16,13 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({})
   const [saveError, setSaveError] = useState('')
+  const [prefs, setPrefs] = useState({
+    'Experience recommendations': true,
+    'Booking confirmations': true,
+    'Price drop alerts': true,
+    'Personalised recommendations': true,
+    'Activity tracking': true,
+  })
   const { user, profile, updateProfile, signOut } = useAuthStore()
   const { wishlist, savedIds, isLoading: wlLoading } = useWishlist()
   const { bookings, isLoading: bkLoading } = useBookings()
@@ -255,7 +262,12 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
                         <div className="text-xs text-gray-400 mt-0.5">{row.desc}</div>
                       </div>
                       <label className="relative inline-block w-10 h-5 flex-shrink-0 cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
+                        <input
+                          type="checkbox"
+                          checked={prefs[row.name] ?? true}
+                          onChange={e => setPrefs(p => ({ ...p, [row.name]: e.target.checked }))}
+                          className="sr-only peer"
+                        />
                         <div className="w-10 h-5 bg-blue-brand/15 rounded-full peer peer-checked:bg-blue-brand transition-colors" />
                         <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow" />
                       </label>
