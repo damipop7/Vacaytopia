@@ -69,12 +69,12 @@ const PHOTOS = {
     'Wellness':      'photo-1506126613408-eca07ce68773',
   },
   'Kansas City': {
-    'Food & Drink':  'photo-1529543544282-ea669407fca3',
-    'Outdoors':      'photo-1441974231531-c6227db76b6e',
-    'Nightlife':     'photo-1514525253161-7a46d19cd819',
-    'Sports':        'photo-1461896836934-ffe607ba8211',
-    'Arts & Culture':'photo-1578662996442-48f60103fc96',
-    'Wellness':      'photo-1600618528240-fb9fc964b853',
+    'Food & Drink':  'photo-1504674900247-0877df9cc836',
+    'Outdoors':      'photo-1507525428034-b723cf961d3e',
+    'Nightlife':     'photo-1470229722913-7c0e2dbbafd3',
+    'Sports':        'photo-1571019613454-1cb2f99b2d8b',
+    'Arts & Culture':'photo-1513364776144-60967b0f800f',
+    'Wellness':      'photo-1540555700478-4be289fbecef',
   },
 }
 
@@ -112,7 +112,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const {
     id, title, city, category, price_per_person,
     duration_label, rating, review_count,
-    image_gradient, is_sponsored, _score,
+    image_url, image_gradient, is_sponsored, _score,
     source, website,
     experience_type, ticket_url, delivery_url, maps_url,
   } = experience
@@ -156,8 +156,9 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
   const catStyle       = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
   const isForYou       = showForYou && _score && _score >= 60
-  const photoUrl       = getPhotoUrl(category, city)
+  const categoryPhoto  = getPhotoUrl(category, city)
   const fallbackPhoto  = getCategoryFallbackUrl(category)
+  const photoUrl       = image_url || categoryPhoto
 
   return (
     <div
