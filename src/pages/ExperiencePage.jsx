@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useExperience } from '../hooks/useRecommendations'
 import { useWishlist } from '../hooks/useWishlist'
 
@@ -79,7 +80,42 @@ function ExperiencePageInner({ id }) {
     })
   }
 
+  const pageTitle = `${exp.title} in ${exp.city} | Vtopia`
+  const pageDesc  = exp.description
+    ? exp.description.slice(0, 155) + (exp.description.length > 155 ? '…' : '')
+    : `Book ${exp.title} in ${exp.city}. ${exp.duration_label ? `Duration: ${exp.duration_label}.` : ''} From $${exp.price_per_person}/person.`
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: exp.title,
+    description: exp.description || pageDesc,
+    address: { '@type': 'PostalAddress', addressLocality: exp.city, addressCountry: 'US' },
+    ...(exp.rating > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: exp.rating,
+        reviewCount: exp.review_count || 1,
+      },
+    }),
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'USD',
+      price: exp.price_per_person,
+      availability: 'https://schema.org/InStock',
+    },
+  }
+
   return (
+    <>
+    <Helmet>
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDesc} />
+      <meta property="og:title" content={pageTitle} />
+      <meta property="og:description" content={pageDesc} />
+      <link rel="canonical" href={`https://www.vtopia.world/experience/${exp.id}`} />
+      <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+    </Helmet>
     <div style={{ background:'var(--bg)' }}>
       <div className="max-w-4xl mx-auto px-6 py-8">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-brand mb-6 transition-colors">
@@ -386,5 +422,6 @@ function ExperiencePageInner({ id }) {
         </div>
       </div>
     </div>
+    </>
   )
 }
