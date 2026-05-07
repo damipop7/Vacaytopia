@@ -66,11 +66,14 @@ export default function AppLayout() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
-        <NavLink to="/browse" label="Browse" active={location.pathname.startsWith('/browse')} />
-        <NavLink to="/itinerary" label="✨ AI Itinerary" active={location.pathname.startsWith('/itinerary')} />
-        {user && (
-          <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
-        )}
+          <NavLink to="/browse" label="Browse" active={location.pathname.startsWith('/browse')} />
+          <NavLink to="/itinerary" label="✨ AI Itinerary" active={location.pathname.startsWith('/itinerary')} />
+          {import.meta.env.VITE_FEATURE_WORLD_CUP === 'true' && (
+            <NavLink to="/world-cup" label="🏆 World Cup KC" active={location.pathname === '/world-cup'} highlight />
+          )}
+          {user && (
+            <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
+          )}
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
@@ -166,14 +169,18 @@ export default function AppLayout() {
   )
 }
 
-function NavLink({ to, label, active }) {
+function NavLink({ to, label, active, highlight }) {
   return (
     <Link
       to={to}
       className={`px-4 py-2 rounded-pill text-sm font-semibold transition-colors ${
-        active
-          ? 'bg-blue-tint text-blue-brand'
-          : 'text-gray-500 hover:text-blue-brand hover:bg-blue-tint'
+        highlight
+          ? active
+            ? 'bg-gold-brand text-white'
+            : 'bg-gold-tint text-gold-dark border border-gold-brand/30 hover:bg-gold-brand hover:text-white'
+          : active
+            ? 'bg-blue-tint text-blue-brand'
+            : 'text-gray-500 hover:text-blue-brand hover:bg-blue-tint'
       }`}
     >
       {label}
