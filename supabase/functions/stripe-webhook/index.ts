@@ -94,7 +94,7 @@ serve(async (req) => {
 
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
-      .select('total_amount, status')
+      .select('total_amount, status, contact_name, contact_email, booking_reference, guest_count, booking_date, special_requests, experiences(title, provider_email)')
       .eq('id', bookingId)
       .single()
 
@@ -132,6 +132,63 @@ serve(async (req) => {
     }
 
     console.log(`Booking ${bookingId} confirmed`)
+
+    // ── Send confirmation emails via Resend (non-fatal if key not set) ──
+    const resendKey = Deno.env.get('RESEND_API_KEY')
+    if (resendKey && booking.contact_email) {
+      const exp = (booking as any).experiences
+      const expTitle = exp?.title ?? 'your experience'
+      const providerEmail = exp?.provider_email
+
+      // 1. Guest confirmation
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'Vtopia <bookings@vtopia.world>',
+          to: booking.contact_email,
+          subject: `Booking confirmed — ${expTitle}`,
+          html: `<h2>You're booked! 🎉</h2>
+<p>Hi ${booking.contact_name},</p>
+<p>Your booking for <strong>${expTitle}</strong> is confirmed.</p>
+<ul>
+  <li><strong>Reference:</strong> ${booking.booking_reference}</li>
+  <li><strong>Date:</strong> ${booking.booking_date}</li>
+  <li><strong>Guests:</strong> ${booking.guest_count}</li>
+  <li><strong>Total paid:</strong> $${booking.total_amount}</li>
+  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${booking.special_requests}</li>` : ''}
+</ul>
+<p><strong>Cancellation policy:</strong> Cancel 24 hours before for a full refund. Contact <a href="mailto:support@vtopia.world">support@vtopia.world</a> with your reference number.</p>
+<p>See you there! — The Vtopia team</p>`,
+        }),
+      }).catch(e => console.error('Guest email failed:', e))
+
+      // 2. Provider notification
+      if (providerEmail) {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Vtopia Bookings <bookings@vtopia.world>',
+            to: providerEmail,
+            subject: `New Vtopia Booking — ${expTitle} — ${booking.booking_date}`,
+            html: `<h2>New booking via Vtopia</h2>
+<ul>
+  <li><strong>Experience:</strong> ${expTitle}</li>
+  <li><strong>Booking ref:</strong> ${booking.booking_reference}</li>
+  <li><strong>Guest name:</strong> ${booking.contact_name}</li>
+  <li><strong>Guest email:</strong> ${booking.contact_email}</li>
+  <li><strong>Party size:</strong> ${booking.guest_count}</li>
+  <li><strong>Date:</strong> ${booking.booking_date}</li>
+  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${booking.special_requests}</li>` : ''}
+  <li><strong>Amount paid:</strong> $${booking.total_amount}</li>
+</ul>
+<p>Please reply to this email to confirm you have the reservation, or contact the guest directly at ${booking.contact_email}.</p>
+<p>Questions? Contact <a href="mailto:support@vtopia.world">support@vtopia.world</a></p>`,
+          }),
+        }).catch(e => console.error('Provider email failed:', e))
+      }
+    }
   }
 
   // ── Handle payment_intent.payment_failed ────────────────────────
