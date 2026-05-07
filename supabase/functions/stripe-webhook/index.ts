@@ -81,12 +81,35 @@ serve(async (req) => {
 
   // ── Handle payment_intent.succeeded ─────────────────────────────
   if (event.type === 'payment_intent.succeeded') {
-    const pi = event.data.object as { id: string; metadata?: { booking_id?: string } }
+    const pi = event.data.object as { id: string; amount?: number; metadata?: { booking_id?: string } }
     const bookingId = pi.metadata?.booking_id
 
     if (!bookingId) {
       console.error('No booking_id in PaymentIntent metadata')
       return new Response(JSON.stringify({ received: true, warning: 'No booking_id' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: booking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('total_amount, status')
+      .eq('id', bookingId)
+      .single()
+
+    if (fetchError || !booking) {
+      console.error('Booking not found for id:', bookingId)
+      return new Response(JSON.stringify({ received: true, warning: 'Booking not found' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const expectedAmount = Math.round(booking.total_amount * 100)
+    if (pi.amount !== undefined && pi.amount !== expectedAmount) {
+      console.error(`Amount mismatch for booking ${bookingId}: expected ${expectedAmount}, got ${pi.amount}`)
+      return new Response(JSON.stringify({ received: true, warning: 'Amount mismatch — booking not confirmed' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
