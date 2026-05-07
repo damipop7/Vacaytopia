@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL") ?? "",
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+);
 
 const BUDGET_HOTEL_TIER: Record<string, string> = {
   budget: "budget-friendly hostels and guesthouses",
@@ -100,6 +106,13 @@ serve(async (req) => {
   }
 
   try {
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: "Server configuration error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+
     const { answers } = await req.json();
     if (!answers) {
       return new Response(JSON.stringify({ error: "Missing answers" }), { status: 400 });
@@ -110,21 +123,14 @@ serve(async (req) => {
     let experiences: Experience[] = [];
     if (cityName) {
       try {
-        const expRes = await fetch(
-          `${Deno.env.get("SUPABASE_URL")}/rest/v1/experiences` +
-            `?select=id,title,category,price_per_person,duration_label` +
-            `&city=eq.${encodeURIComponent(cityName)}` +
-            `&is_active=eq.true` +
-            `&order=rating.desc` +
-            `&limit=30`,
-          {
-            headers: {
-              apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-            },
-          }
-        );
-        if (expRes.ok) experiences = await expRes.json();
+        const { data } = await supabase
+          .from("experiences")
+          .select("id,title,category,price_per_person,duration_label")
+          .eq("city", cityName)
+          .eq("is_active", true)
+          .order("rating", { ascending: false })
+          .limit(30);
+        if (data) experiences = data;
       } catch (_) {
         // Non-fatal: fall back to catalog-free generation
       }
