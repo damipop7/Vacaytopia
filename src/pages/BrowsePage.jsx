@@ -1,21 +1,27 @@
 import { useState, useEffect, lazy, Suspense, Fragment } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
+import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
 
 const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
-const CITIES = [
+const ALL_CITIES = [
   { value: 'all',           label: '🌍 All Cities' },
+  { value: 'Kansas City',   label: '🥩 Kansas City' },  // TODO: re-enable post-World-Cup
   { value: 'Miami',         label: '🌊 Miami' },
   { value: 'New York City', label: '🗽 New York City' },
   { value: 'Orlando',       label: '🎢 Orlando' },
   { value: 'Las Vegas',     label: '🎰 Las Vegas' },
   { value: 'New Orleans',   label: '🎷 New Orleans' },
-  { value: 'Kansas City', label: '🥩 Kansas City' },
-  { value: 'Austin',      label: '🎸 Austin' },
+  { value: 'Austin',        label: '🎸 Austin' },
 ]
+
+// TODO: re-enable post-World-Cup — filter to ACTIVE_CITIES when set
+const CITIES = ALL_CITIES.filter(c =>
+  c.value === 'all' || isCityActive(c.value)
+)
 
 const CATEGORIES = [
   { value: 'all',           label: '🌍 All',          count: null },
@@ -51,6 +57,13 @@ function resolveBrowseCityParam(param) {
 export default function BrowsePage() {
   const { city: cityParam } = useParams()
   const [searchParams]      = useSearchParams()
+
+  // Redirect inactive city URLs to Kansas City when in single-city mode
+  // TODO: re-enable post-World-Cup — remove this redirect block
+  const resolvedCityParam = resolveBrowseCityParam(cityParam)
+  if (resolvedCityParam && !isCityActive(resolvedCityParam) && SINGLE_CITY_MODE) {
+    return <Navigate to="/browse/kansas-city" replace />
+  }
 
   const [city,     setCity]     = useState(
     () => resolveBrowseCityParam(cityParam) || resolveBrowseCityParam(searchParams.get('city')) || 'all'

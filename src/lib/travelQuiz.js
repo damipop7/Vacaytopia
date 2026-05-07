@@ -1,4 +1,5 @@
 /** Shared interest quiz — keys must match `scoreExperience` in useRecommendations.js */
+import { isCityActive } from './cityConfig'
 
 export const QUIZ_INTERESTS = [
   { id: 'food', label: 'Food & drink', emoji: '🍽️' },
@@ -26,15 +27,18 @@ export const QUIZ_GROUP_TYPES = [
   { id: 'colleagues', label: 'Work / colleagues' },
 ]
 
-export const QUIZ_CITIES = [
-  { value: 'Kansas City', label: '🥩 Kansas City', featured: true },  // TODO: re-enable post-World-Cup
-  { value: 'all', label: "I'm flexible — surprise me" },
-  { value: 'Miami', label: 'Miami' },
+const ALL_QUIZ_CITIES = [
+  { value: 'Kansas City',   label: '🥩 Kansas City',   featured: true },
+  { value: 'all',           label: "I'm flexible — surprise me" },
+  { value: 'Miami',         label: 'Miami' },
   { value: 'New York City', label: 'New York City' },
-  { value: 'Orlando', label: 'Orlando' },
-  { value: 'Las Vegas', label: 'Las Vegas' },
-  { value: 'New Orleans', label: 'New Orleans' },
+  { value: 'Orlando',       label: 'Orlando' },
+  { value: 'Las Vegas',     label: 'Las Vegas' },
+  { value: 'New Orleans',   label: 'New Orleans' },
 ]
+
+// TODO: re-enable post-World-Cup — filter by ACTIVE_CITIES when set
+export const QUIZ_CITIES = ALL_QUIZ_CITIES.filter(c => c.value === 'all' || isCityActive(c.value))
 
 export function labelInterests(ids) {
   if (!ids?.length) return 'Not set'

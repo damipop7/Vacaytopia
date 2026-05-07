@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isCityActive } from "../lib/cityConfig";
 
-const CITIES = [
-  { id: "kansas-city", name: "Kansas City", emoji: "🥩", vibe: "BBQ & World Cup 2026", featured: true }, // TODO: re-enable post-World-Cup
-  { id: "nyc", name: "New York City", emoji: "🗽", vibe: "Culture & Energy" },
-  { id: "miami", name: "Miami", emoji: "🌴", vibe: "Beach & Nightlife" },
-  { id: "orlando", name: "Orlando", emoji: "🎢", vibe: "Theme Parks & Fun" },
-  { id: "las-vegas", name: "Las Vegas", emoji: "🎰", vibe: "Entertainment & Shows" },
-  { id: "new-orleans", name: "New Orleans", emoji: "🎷", vibe: "Food & Music" },
-  { id: "austin", name: "Austin", emoji: "🎸", vibe: "Music & Outdoors" },
+const ALL_CITIES = [
+  { id: "kansas-city", name: "Kansas City", emoji: "🥩", vibe: "BBQ & World Cup 2026", featured: true },
+  { id: "nyc",         name: "New York City", emoji: "🗽", vibe: "Culture & Energy" },
+  { id: "miami",       name: "Miami",         emoji: "🌴", vibe: "Beach & Nightlife" },
+  { id: "orlando",     name: "Orlando",       emoji: "🎢", vibe: "Theme Parks & Fun" },
+  { id: "las-vegas",   name: "Las Vegas",     emoji: "🎰", vibe: "Entertainment & Shows" },
+  { id: "new-orleans", name: "New Orleans",   emoji: "🎷", vibe: "Food & Music" },
+  { id: "austin",      name: "Austin",        emoji: "🎸", vibe: "Music & Outdoors" },
 ];
+
+// TODO: re-enable post-World-Cup — filter by ACTIVE_CITIES when set
+const CITY_NAME_MAP = { "kansas-city": "Kansas City", nyc: "New York City", miami: "Miami", orlando: "Orlando", "las-vegas": "Las Vegas", "new-orleans": "New Orleans", austin: "Austin" };
+const CITIES = ALL_CITIES.filter(c => isCityActive(CITY_NAME_MAP[c.id] ?? c.name));
 
 const INTERESTS = [
   { id: "food", label: "Food & Drinks", emoji: "🍜" },
