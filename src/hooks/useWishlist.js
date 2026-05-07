@@ -37,8 +37,11 @@ export function useWishlist() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['wishlist', user?.id])
-      queryClient.invalidateQueries(['recommendations'])
+      queryClient.invalidateQueries({ queryKey: ['wishlist', user?.id] })
+      queryClient.invalidateQueries({ queryKey: ['user-prefs', user?.id] })
+    },
+    onError: (err) => {
+      console.error('Wishlist toggle failed:', err.message)
     },
   })
 
