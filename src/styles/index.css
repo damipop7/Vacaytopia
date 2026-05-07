@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap');
+/* Google Fonts loaded in index.html <link> to avoid render-blocking CSS @import */
 
 @tailwind base;
 @tailwind components;
@@ -55,7 +55,7 @@ h1, h2, h3, h4 {
   .input-field {
     @apply w-full px-4 py-3 border border-blue-brand/15 rounded-[9px]
            font-sans text-sm text-[#0D1B3E] bg-white outline-none
-           focus:border-blue-brand focus:ring-2 focus:ring-2 focus:ring-offset-0
+           focus:border-blue-brand focus:ring-2 focus:ring-blue-brand/20 focus:ring-offset-0
            placeholder:text-[#7A8BAA] transition-all duration-200;
   }
 
