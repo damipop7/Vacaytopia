@@ -8,7 +8,7 @@ export function useBookings() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
 
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading, error } = useQuery({
     queryKey: ['bookings', user?.id],
     queryFn:  async () => {
       if (!user) return []
@@ -28,11 +28,13 @@ export function useBookings() {
       if (!user) throw new Error('Sign in to book')
 
       // 1. Fetch experience price
-      const { data: exp } = await supabase
+      const { data: exp, error: expErr } = await supabase
         .from('experiences')
         .select('price_per_person, title')
         .eq('id', experienceId)
         .single()
+
+      if (expErr || !exp) throw new Error('Experience not found')
 
       const subtotal   = exp.price_per_person * guests
       const commission = Math.round(subtotal * COMMISSION_RATE * 100) / 100
@@ -66,5 +68,5 @@ export function useBookings() {
     },
   })
 
-  return { bookings, isLoading, createBooking }
+  return { bookings, isLoading, error, createBooking }
 }

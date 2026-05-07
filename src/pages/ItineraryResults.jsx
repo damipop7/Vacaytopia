@@ -198,7 +198,7 @@ function BookableExperiences({ cityKey, interests = [] }) {
         .eq("city", cityName).eq("is_active", true)
         .order("is_featured", { ascending: false }).order("rating", { ascending: false }).limit(6);
       setExperiences(fallback || []);
-    } catch (_) { setExperiences([]); }
+    } catch { setExperiences([]); }
     finally { setLoading(false); }
   }
 
@@ -235,7 +235,7 @@ function ShareButton({ itineraryId, headline }) {
   async function handleShare() {
     const url = `${window.location.origin}/itinerary/${itineraryId}`;
     if (navigator.share) {
-      try { await navigator.share({ title: headline, text: `Check out my Vtopia trip plan! ${url}`, url }); return; } catch (_) {}
+      try { await navigator.share({ title: headline, text: `Check out my Vtopia trip plan! ${url}`, url }); return; } catch { /* user dismissed share sheet */ }
     }
     await navigator.clipboard.writeText(url);
     setCopied(true);
@@ -274,13 +274,15 @@ export default function ItineraryResults() {
   async function generateItinerary() {
     try {
       setStatus("loading");
+      const { data: { session } } = await supabase.auth.getSession()
+      const authToken = session?.access_token || SUPABASE_ANON_KEY
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-itinerary`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${authToken}`,
             apikey: SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ answers }),
@@ -313,7 +315,7 @@ export default function ItineraryResults() {
           .select("id")
           .single();
         if (saved?.id) setSavedItineraryId(saved.id);
-      } catch (_) {}
+      } catch { /* non-fatal: saved state unavailable */ }
     } catch (err) {
       setErrorMsg(err.message || "Something went wrong.");
       setStatus("error");

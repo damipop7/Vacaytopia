@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import * as Sentry from '@sentry/react'
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -11,8 +12,11 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // In production, send to your error monitoring service (e.g. Sentry)
-    console.error('vtopia Error:', error, info)
+    if (import.meta.env.VITE_SENTRY_DSN) {
+      Sentry.captureException(error, { extra: info })
+    } else {
+      console.error('vtopia Error:', error, info)
+    }
   }
 
   render() {

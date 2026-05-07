@@ -328,6 +328,7 @@ function ExperiencesTab() {
     setLoading(false)
   }, [cityFilter, catFilter])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() is a stable useCallback
   useEffect(() => { load() }, [load])
 
   async function toggleActive(exp) {

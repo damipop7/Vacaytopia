@@ -78,7 +78,7 @@ export function useRecommendations(filters = {}) {
     queryKey: ['user-prefs', user?.id],
     queryFn: async () => {
       if (!user) return { quizAnswers: null, savedIds: [] }
-      const [quizRes, savedRes] = await Promise.all([
+      const [quizResult, savedResult] = await Promise.allSettled([
         supabase
           .from('quiz_results')
           .select('*')
@@ -91,9 +91,11 @@ export function useRecommendations(filters = {}) {
           .select('experience_id')
           .eq('user_id', user.id),
       ])
+      const quizData  = quizResult.status  === 'fulfilled' ? quizResult.value.data   : null
+      const savedData = savedResult.status === 'fulfilled' ? savedResult.value.data  : []
       return {
-        quizAnswers: quizRes.data ?? null,
-        savedIds: (savedRes.data || []).map(w => w.experience_id),
+        quizAnswers: quizData ?? null,
+        savedIds: (savedData || []).map(w => w.experience_id),
       }
     },
     enabled: !!user,

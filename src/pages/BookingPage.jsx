@@ -77,6 +77,10 @@ function StripePaymentForm({ total, onSuccess, onBack, bookingId }) {
 
     // 2. Fetch clientSecret from our edge function
     try {
+      // getUser() forces a server-side token validation, ensuring the session
+      // hasn't expired before we hit the payment edge function.
+      const { data: { user: sessionUser }, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !sessionUser) throw new Error('Session expired. Please sign in again.')
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
@@ -166,9 +170,9 @@ function StripePaymentForm({ total, onSuccess, onBack, bookingId }) {
 
       <p className="text-center text-xs text-gray-400">
         By paying you agree to our{' '}
-        <a href="#" className="text-blue-brand">Terms</a>{' '}
+        <a href="/privacy#terms" className="text-blue-brand">Terms</a>{' '}
         and{' '}
-        <a href="#" className="text-blue-brand">Cancellation Policy</a>.
+        <a href="/privacy#cancellation" className="text-blue-brand">Cancellation Policy</a>.
       </p>
     </div>
   )
@@ -195,7 +199,6 @@ export default function BookingPage() {
     specialRequests: '',
   })
   const [booking,     setBooking]     = useState(null)  // Supabase booking row
-  const [clientSecret, setClientSecret] = useState(null) // set when entering step 3
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
   const [shareCopied, setShareCopied] = useState(false)

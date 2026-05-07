@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense, Fragment } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
 
@@ -91,7 +92,24 @@ export default function BrowsePage() {
   const cityName    = CITIES.find(c => c.value === city)?.label.split(' ').slice(1).join(' ') || 'All Cities'
   const isComingSoon = city !== 'all' && !LIVE_CITIES.has(city)
 
+  const pageTitle = city !== 'all'
+    ? `Things to Do in ${cityName} | Vtopia — World Cup 2026`
+    : 'Explore Experiences | Vtopia — US City Travel Guide'
+  const pageDesc = city === 'Kansas City'
+    ? `Discover the best things to do in Kansas City for FIFA World Cup 2026. BBQ trails, live music, arts, and local experiences — handpicked for World Cup visitors.`
+    : city !== 'all'
+    ? `Explore handpicked experiences in ${cityName} — food, outdoors, nightlife, arts, and more. Book local adventures with Vtopia.`
+    : 'Discover the best local experiences across US cities. Personalized travel recommendations for food, outdoors, nightlife, arts, and wellness.'
+
   return (
+    <>
+    <Helmet>
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDesc} />
+      <meta property="og:title" content={pageTitle} />
+      <meta property="og:description" content={pageDesc} />
+      <link rel="canonical" href={`https://www.vtopia.world${city !== 'all' ? `/browse/${city.toLowerCase().replace(/ /g, '-')}` : '/browse'}`} />
+    </Helmet>
     <div className="flex min-h-[calc(100vh-64px)]" style={{ background: 'var(--bg)' }}>
 
       {/* ── Sidebar ── */}
@@ -341,5 +359,6 @@ export default function BrowsePage() {
         )}
       </div>
     </div>
+    </>
   )
 }

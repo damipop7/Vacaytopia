@@ -139,7 +139,7 @@ function BookableExperiences({ cityKey, interests = [] }) {
         .eq("city", cityName).eq("is_active", true)
         .order("is_featured", { ascending: false }).order("rating", { ascending: false }).limit(6);
       setExperiences(fallback || []);
-    } catch (_) { setExperiences([]); }
+    } catch { setExperiences([]); }
     finally { setLoading(false); }
   }
 
@@ -178,11 +178,6 @@ export default function ItineraryView() {
   const [activeTab, setActiveTab] = useState("itinerary");
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!id) { setStatus("error"); return; }
-    fetchItinerary();
-  }, [id]);
-
   async function fetchItinerary() {
     const { data, error } = await supabase
       .from("itineraries")
@@ -193,6 +188,12 @@ export default function ItineraryView() {
     setRecord(data);
     setStatus("success");
   }
+
+  useEffect(() => {
+    if (!id) { setStatus("error"); return; }
+    fetchItinerary();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchItinerary is stable within this render scope
+  }, [id]);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(window.location.href);

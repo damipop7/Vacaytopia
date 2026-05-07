@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /auth
+Disallow: /admin
+Disallow: /profile
+Disallow: /book/
+Disallow: /interests
+
+Sitemap: https://www.vtopia.world/sitemap.xml
