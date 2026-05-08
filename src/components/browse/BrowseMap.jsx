@@ -128,7 +128,7 @@ function ClusterLayer({ experiences, navigate }) {
             <div style="min-width:160px;font-family:'DM Sans',sans-serif;">
               <div style="font-weight:700;font-size:13px;color:#0D1B3E;line-height:1.3;margin-bottom:4px;">${exp.title}</div>
               <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">
-                ${exp.city} · $${Number(exp.price_per_person).toFixed(0)} · ★ ${Number(exp.rating).toFixed(1)}
+                ${exp.city} · ${exp.price_tier ? ['$','$$','$$$','$$$$'][exp.price_tier-1] : (exp.price_per_person > 0 ? (exp.price_per_person < 15 ? '$' : exp.price_per_person < 40 ? '$$' : exp.price_per_person < 80 ? '$$$' : '$$$$') : 'Free')} · ★ ${Number(exp.rating).toFixed(1)}
               </div>
               <button onclick="window.__vtopiaNav('/experience/${exp.id}')"
                 style="font-size:12px;font-weight:600;color:#034694;background:none;border:none;cursor:pointer;padding:0;">

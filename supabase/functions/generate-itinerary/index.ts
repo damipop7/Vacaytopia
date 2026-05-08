@@ -34,7 +34,9 @@ interface Experience {
   id: string;
   title: string;
   category: string;
+  experience_type: string | null;
   price_per_person: number;
+  price_tier: number | null;
   duration_label: string;
 }
 
@@ -75,12 +77,42 @@ function buildPrompt(answers: any, experiences: Experience[]): string {
     ? `\n\nPersonalization instructions:\n${[groupInstructions, helpInstructions].filter(Boolean).join("\n")}`
     : "";
 
+  const priceTierLabel = (tier: number | null, price: number): string => {
+    if (tier === null || tier === undefined) return price > 0 ? `$${price}/person` : "Free";
+    return ["$", "$$", "$$$", "$$$$"][tier - 1] || "$";
+  };
+
+  const bookingNote = (type: string | null): string => {
+    switch (type) {
+      case "reservable":           return "Book in advance via Vtopia";
+      case "restaurant_reserve":   return "Reservation recommended — book on OpenTable or restaurant site";
+      case "food_walkup":
+      case "food_delivery":        return "Walk in — no reservation needed";
+      case "outdoor_free":
+      case "free_no_booking":      return "Free — just show up";
+      case "outdoor_paid":         return "Entry fee required — buy tickets at the venue or online";
+      case "cultural_free":        return "Free admission";
+      case "cultural_paid":        return "Entry fee required — check venue website for tickets";
+      case "nightlife_walkin":
+      case "nightlife":            return "Walk in — check for cover charge on weekends";
+      case "nightlife_ticketed":   return "Tickets required — buy in advance";
+      case "ticketed":             return "Tickets required — check ticket_url or venue website";
+      case "sports_event":         return "Tickets required — check team website or Ticketmaster";
+      case "transport":            return "No booking needed — see routes at provider website";
+      default:                     return "";
+    }
+  };
+
   const catalogSection = experiences.length > 0
-    ? `\n\nReal bookable experiences on Vtopia for ${city}:\n${
+    ? `\n\nExperiences available in ${city} via Vtopia:\n${
         experiences
-          .map((e) => `[${e.id}] ${e.title} | ${e.category} | $${e.price_per_person}/person | ${e.duration_label}`)
+          .map((e) => {
+            const note = bookingNote(e.experience_type);
+            const price = priceTierLabel(e.price_tier, e.price_per_person);
+            return `[${e.id}] ${e.title} | ${e.category} | ${price} | ${e.duration_label}${note ? ` | ${note}` : ""}`;
+          })
           .join("\n")
-      }\n\nWhen an activity slot fits one of the above experiences: include "experienceId" set to its UUID and set "cost" to its exact price (e.g. "$${experiences[0]?.price_per_person}/person"). For slots with no matching Vtopia experience, omit "experienceId".`
+      }\n\nWhen an activity slot matches one of the above: set "experienceId" to its UUID and "cost" to its price display (e.g. "$$" or "Free"). IMPORTANT: only suggest "Book via Vtopia" for experiences whose note says "Book in advance via Vtopia". For all other types, use the booking note as the tip — never suggest internal Vtopia booking for restaurants, parks, nightlife, or ticketed events.`
     : "";
 
   return `You are a travel concierge. Create a ${days}-day itinerary for a ${answers.traveler || "traveler"} trip to ${city}. Budget: ${BUDGET_LABELS[answers.budget]} per person/day. Interests: ${answers.interests.join(", ")}. Hotel tier: ${BUDGET_HOTEL_TIER[answers.budget]}.${groupLine}${helpLine}${extras}${personalizationSection}${catalogSection}
@@ -125,7 +157,7 @@ serve(async (req) => {
       try {
         const { data } = await supabase
           .from("experiences")
-          .select("id,title,category,price_per_person,duration_label")
+          .select("id,title,category,experience_type,price_per_person,price_tier,duration_label")
           .eq("city", cityName)
           .eq("is_active", true)
           .order("rating", { ascending: false })

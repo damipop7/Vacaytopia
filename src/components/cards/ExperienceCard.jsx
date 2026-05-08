@@ -100,6 +100,31 @@ function getCategoryFallbackUrl(category) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- shared utility exported for ExperiencePage
+export function getPriceTierLabel(tier) {
+  return {
+    1: 'Budget (under $15)',
+    2: 'Moderate ($15–40)',
+    3: 'Splurge ($40–80)',
+    4: 'Premium ($80+)',
+  }[tier] ?? ''
+}
+
+export function PriceTier({ tier, className = '' }) {
+  if (tier === null || tier === undefined) {
+    return <span className={`text-xs font-semibold text-green-600 ${className}`}>Free</span>
+  }
+  const signs = ['$', '$$', '$$$', '$$$$']
+  const full  = signs[tier - 1] || '$'
+  const empty = '$$$$'.slice(full.length)
+  return (
+    <span className={`text-xs font-semibold ${className}`} title={getPriceTierLabel(tier)}>
+      <span className="text-[#0D1B3E]">{full}</span>
+      {empty && <span className="text-gray-200">{empty}</span>}
+    </span>
+  )
+}
+
 // eslint-disable-next-line react-refresh/only-export-components -- shared display constants used across pages
 export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl, getCategoryFallbackUrl }
 
@@ -110,55 +135,26 @@ export default function ExperienceCard({ experience, showForYou = false }) {
   if (!experience) return null
 
   const {
-    id, title, city, category, price_per_person,
+    id, title, city, category,
+    price_per_person, price_tier,
     duration_label, rating, review_count,
     image_url, image_gradient, is_sponsored, _score,
-    source, website,
-    experience_type, ticket_url, delivery_url, maps_url,
   } = experience
 
-  const isOSM = source === 'osm'
+  const saved         = isSaved(id)
+  const gradient      = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
+  const catStyle      = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
+  const isForYou      = showForYou && _score && _score >= 60
+  const categoryPhoto = getPhotoUrl(category, city)
+  const fallbackPhoto = getCategoryFallbackUrl(category)
+  const photoUrl      = image_url || categoryPhoto
 
-  const UTM = '?utm_source=vtopia&utm_medium=referral&utm_campaign=wc2026'
-  function externalHref(url) {
-    if (!url) return null
-    return url.includes('?') ? `${url}&utm_source=vtopia&utm_medium=referral&utm_campaign=wc2026` : `${url}${UTM}`
-  }
-  const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title + ' ' + city)}${UTM}`
-
-  // Resolve CTA config based on experience_type (falls back to legacy OSM/reservable logic)
-  function getCtaConfig() {
-    const type = experience_type ?? (isOSM ? 'free_no_booking' : 'reservable')
-    switch (type) {
-      case 'ticketed':
-        return { label: 'Get tickets →', href: externalHref(ticket_url) || `https://www.google.com/search?q=${encodeURIComponent(title + ' tickets ' + city)}${UTM}`, external: true }
-      case 'free_no_booking':
-        return { label: 'Get directions →', href: externalHref(maps_url) || mapsSearchUrl, external: true }
-      case 'food_delivery':
-        return { label: 'Order online →', href: externalHref(delivery_url) || externalHref(website) || mapsSearchUrl, external: true }
-      case 'outdoor_info':
-        return { label: 'View trail info →', href: externalHref(maps_url) || externalHref(website) || mapsSearchUrl, external: true }
-      case 'nightlife':
-        return { label: 'View details', href: null, navigate: `/experience/${id}` }
-      case 'shopping':
-        return { label: 'Visit website →', href: externalHref(website) || mapsSearchUrl, external: true }
-      case 'reservable':
-      default:
-        if (isOSM) return website
-          ? { label: 'Visit website →', href: externalHref(website), external: true }
-          : { label: 'Search Google →', href: `https://www.google.com/search?q=${encodeURIComponent(title + ' ' + city)}${UTM}`, external: true }
-        return { label: 'Book Now', href: null, navigate: `/book/${id}`, primary: true }
-    }
-  }
-  const cta = getCtaConfig()
-
-  const saved          = isSaved(id)
-  const gradient       = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
-  const catStyle       = CATEGORY_STYLES[category] || 'bg-gray-100 text-gray-600'
-  const isForYou       = showForYou && _score && _score >= 60
-  const categoryPhoto  = getPhotoUrl(category, city)
-  const fallbackPhoto  = getCategoryFallbackUrl(category)
-  const photoUrl       = image_url || categoryPhoto
+  // Use DB price_tier if present; otherwise derive from price_per_person
+  const resolvedTier = (price_tier !== undefined && price_tier !== null)
+    ? price_tier
+    : price_per_person > 0
+      ? price_per_person < 15 ? 1 : price_per_person < 40 ? 2 : price_per_person < 80 ? 3 : 4
+      : null
 
   return (
     <div
@@ -222,52 +218,15 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         <div className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
           <span>{city}</span>
           {duration_label && <><span>·</span><span>{duration_label}</span></>}
-          {!isOSM && review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
+          {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
+          {rating > 0 && <><span>·</span><span className="text-gold-brand">★ {rating}</span></>}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
-          {price_per_person > 0 ? (
-            <div>
-              <div className="font-bold text-blue-brand text-base">
-                ${price_per_person}
-                <span className="text-xs font-normal text-gray-400 ml-0.5">/person</span>
-              </div>
-              {rating > 0 && (
-                <div className="flex items-center gap-0.5 text-[11px] text-gray-500">
-                  <span className="text-gold-brand">★</span>
-                  <span>{rating}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-xs font-semibold text-green-600">Free</div>
-          )}
-
-          {cta.external ? (
-            <a
-              href={cta.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {cta.label}
-            </a>
-          ) : cta.primary ? (
-            <button
-              className="btn-primary text-xs px-3 py-1.5"
-              onClick={(e) => { e.stopPropagation(); navigate(cta.navigate) }}
-            >
-              {cta.label}
-            </button>
-          ) : (
-            <button
-              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              onClick={(e) => { e.stopPropagation(); navigate(cta.navigate) }}
-            >
-              {cta.label}
-            </button>
-          )}
+          <PriceTier tier={resolvedTier} />
+          <span className="text-sm text-blue-brand hover:text-blue-600 font-medium transition-colors">
+            View details →
+          </span>
         </div>
       </div>
     </div>
