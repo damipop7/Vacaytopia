@@ -100,6 +100,7 @@ function getCategoryFallbackUrl(category) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- shared utility exported for ExperiencePage
 export function getPriceTierLabel(tier) {
   return {
     1: 'Budget (under $15)',
