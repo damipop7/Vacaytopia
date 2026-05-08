@@ -19,8 +19,9 @@ const AdminPage        = lazy(() => import('./pages/AdminPage'))
 const ItineraryQuiz    = lazy(() => import('./pages/ItineraryQuiz'))
 const ItineraryResults = lazy(() => import('./pages/ItineraryResults'))
 const ItineraryView    = lazy(() => import('./pages/ItineraryView'))
-const WorldCupPage     = lazy(() => import('./pages/WorldCupPage'))
-const KansasCityPage   = lazy(() => import('./pages/KansasCityPage'))
+const WorldCupPage         = lazy(() => import('./pages/WorldCupPage'))
+const KansasCityPage       = lazy(() => import('./pages/KansasCityPage'))
+const ListExperiencePage   = lazy(() => import('./pages/ListExperiencePage'))
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -69,8 +70,9 @@ export default function App() {
                 <Route path="/itinerary"         element={<ItineraryQuiz />} />
                 <Route path="/itinerary/results" element={<ItineraryResults />} />
                 <Route path="/itinerary/:id" element={<ItineraryView />} />
-                <Route path="/world-cup"     element={<WorldCupPage />} />
-                <Route path="/kansas-city"   element={<KansasCityPage />} />
+                <Route path="/world-cup"           element={<WorldCupPage />} />
+                <Route path="/kansas-city"         element={<KansasCityPage />} />
+                <Route path="/list-your-experience" element={<ListExperiencePage />} />
               </Route>
 
               <Route path="/auth"          element={<AuthPage />} />
