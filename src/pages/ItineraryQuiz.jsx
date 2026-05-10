@@ -51,7 +51,24 @@ const TRAVELER_GROUP_OPTIONS = [
   { id: "large-group", label: "Large group (5+)",   emoji: "🎉" },
 ];
 
-const STEPS = ["city", "dates", "budget", "vibe", "helpNeeded", "travelerGroup", "extras"];
+const PHYSICAL_OPTIONS = [
+  { id: 'no_limit',   label: 'No limitations',         desc: 'All terrain, any pace' },
+  { id: 'moderate',   label: 'Moderate activity',       desc: 'Light walking, no hiking' },
+  { id: 'limited',    label: 'Limited mobility',        desc: 'Prefer seated or short walks' },
+  { id: 'wheelchair', label: 'Wheelchair accessible',   desc: 'Only fully accessible venues' },
+]
+
+const TRANSPORT_OPTIONS = [
+  { id: 'rideshare', label: 'Rideshare',  desc: 'Uber / Lyft between stops' },
+  { id: 'walk',      label: 'Walk',       desc: 'Keep everything walkable' },
+  { id: 'drive',     label: 'Drive',      desc: "I'll have a rental car"    },
+]
+
+const DIETARY_OPTIONS = [
+  'Vegetarian', 'Vegan', 'Gluten-free', 'Halal', 'Kosher', 'Nut allergy', 'Seafood-free',
+]
+
+const STEPS = ["city", "dates", "budget", "vibe", "helpNeeded", "travelerGroup", "tripDetails", "extras"];
 
 export default function ItineraryQuiz() {
   const navigate = useNavigate();
@@ -65,6 +82,12 @@ export default function ItineraryQuiz() {
     helpNeeded: [],
     travelerGroup: null,
     traveler: null,
+    // New fields (Section 2 upgrade)
+    groupSize: 2,
+    physicalAbility: null,
+    dietaryRestrictions: [],
+    transportPreference: null,
+    hoursPerDay: 8,
     extras: "",
   });
   const [errors, setErrors] = useState({});
@@ -107,6 +130,8 @@ export default function ItineraryQuiz() {
     if (currentStep === "vibe" && answers.interests.length === 0) e.interests = "Pick at least one";
     if (currentStep === "helpNeeded" && answers.helpNeeded.length === 0) e.helpNeeded = "Select at least one option";
     if (currentStep === "travelerGroup" && !answers.travelerGroup) e.travelerGroup = "Tell us who's coming";
+    if (currentStep === "tripDetails" && !answers.physicalAbility) e.physicalAbility = "Select your activity level";
+    if (currentStep === "tripDetails" && !answers.transportPreference) e.transportPreference = "Pick your preferred transport";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -341,6 +366,88 @@ export default function ItineraryQuiz() {
                 ))}
               </div>
               {errors.travelerGroup && <p className="text-red-400 text-sm mt-3">{errors.travelerGroup}</p>}
+            </div>
+          )}
+
+          {/* STEP: Trip Details (group size, physical ability, dietary, transport, hours) */}
+          {currentStep === "tripDetails" && (
+            <div className="animate-fadeIn">
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-3">Step {step + 1}</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">A few more details</h2>
+              <p className="text-white/50 mb-6">Helps us build a schedule that actually works for your group.</p>
+
+              {/* Group size */}
+              <div className="mb-5">
+                <label className="text-white/60 text-sm block mb-2">Group size</label>
+                <div className="flex items-center gap-4">
+                  <button type="button" onClick={() => setAnswers(p => ({ ...p, groupSize: Math.max(1, p.groupSize - 1) }))}
+                    className="w-10 h-10 rounded-xl border border-white/20 text-white font-bold text-xl hover:border-white/40 transition">−</button>
+                  <span className="text-2xl font-bold w-8 text-center tabular-nums">{answers.groupSize}</span>
+                  <button type="button" onClick={() => setAnswers(p => ({ ...p, groupSize: Math.min(20, p.groupSize + 1) }))}
+                    className="w-10 h-10 rounded-xl border border-white/20 text-white font-bold text-xl hover:border-white/40 transition">+</button>
+                  <span className="text-white/40 text-sm">{answers.groupSize === 1 ? 'person' : 'people'}</span>
+                </div>
+              </div>
+
+              {/* Physical ability */}
+              <div className="mb-5">
+                <label className="text-white/60 text-sm block mb-2">Activity level</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PHYSICAL_OPTIONS.map(opt => (
+                    <button key={opt.id} onClick={() => setAnswers(p => ({ ...p, physicalAbility: opt.id }))}
+                      className={`p-3 rounded-xl border text-left transition-all ${answers.physicalAbility === opt.id ? 'border-blue-500 bg-blue-600/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="font-semibold text-sm">{opt.label}</div>
+                      <div className="text-white/40 text-xs mt-0.5">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {errors.physicalAbility && <p className="text-red-400 text-xs mt-2">{errors.physicalAbility}</p>}
+              </div>
+
+              {/* Transport preference */}
+              <div className="mb-5">
+                <label className="text-white/60 text-sm block mb-2">Getting around</label>
+                <div className="flex gap-2 flex-wrap">
+                  {TRANSPORT_OPTIONS.map(opt => (
+                    <button key={opt.id} onClick={() => setAnswers(p => ({ ...p, transportPreference: opt.id }))}
+                      className={`flex-1 min-w-[100px] p-3 rounded-xl border text-center transition-all ${answers.transportPreference === opt.id ? 'border-amber-500 bg-amber-500/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                      <div className="font-semibold text-sm">{opt.label}</div>
+                      <div className="text-white/40 text-xs">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {errors.transportPreference && <p className="text-red-400 text-xs mt-2">{errors.transportPreference}</p>}
+              </div>
+
+              {/* Hours per day */}
+              <div className="mb-5">
+                <label className="text-white/60 text-sm block mb-2">
+                  Hours available per day: <span className="text-white font-bold">{answers.hoursPerDay}h</span>
+                </label>
+                <input type="range" min={3} max={14} step={1} value={answers.hoursPerDay}
+                  onChange={e => setAnswers(p => ({ ...p, hoursPerDay: Number(e.target.value) }))}
+                  className="w-full accent-blue-500" />
+                <div className="flex justify-between text-white/30 text-xs mt-1"><span>3h (half day)</span><span>14h (full day)</span></div>
+              </div>
+
+              {/* Dietary restrictions */}
+              <div>
+                <label className="text-white/60 text-sm block mb-2">Dietary restrictions (optional)</label>
+                <div className="flex flex-wrap gap-2">
+                  {DIETARY_OPTIONS.map(d => {
+                    const sel = answers.dietaryRestrictions.includes(d)
+                    return (
+                      <button key={d} onClick={() => setAnswers(p => ({
+                        ...p,
+                        dietaryRestrictions: sel ? p.dietaryRestrictions.filter(x => x !== d) : [...p.dietaryRestrictions, d]
+                      }))}
+                        className={`px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${sel ? 'border-blue-500 bg-blue-600/20 text-white' : 'border-white/10 text-white/50 hover:border-white/30'}`}>
+                        {d}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

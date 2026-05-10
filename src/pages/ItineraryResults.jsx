@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
+import { useWeather } from "../hooks/useWeather";
+import { bookingCityUrl, uberDeepLink, lyftDeepLink } from "../lib/affiliates.config";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -230,6 +232,75 @@ function BookableExperiences({ cityKey, interests = [] }) {
   );
 }
 
+/** 7-day weather strip — only renders when OpenWeatherMap key is set */
+function WeatherStrip({ citySlug }) {
+  const { weather, available } = useWeather(citySlug)
+  if (!available || !weather) return null
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+      <p className="text-white/40 text-xs uppercase tracking-widest mb-3">7-Day Forecast</p>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {weather.map(day => {
+          const date  = new Date(day.dt * 1000)
+          const label = days[date.getDay()]
+          return (
+            <div key={day.dt} className="flex flex-col items-center gap-1 min-w-[52px]">
+              <span className="text-white/40 text-[10px]">{label}</span>
+              <img
+                src={`https://openweathermap.org/img/wn/${day.icon}.png`}
+                alt={day.description}
+                width={32}
+                height={32}
+                className="opacity-80"
+              />
+              {day.isRainy && <span className="text-[9px] text-blue-300 font-semibold">Rain</span>}
+              <span className="text-xs font-bold text-white">{day.tempHigh}°</span>
+              <span className="text-[10px] text-white/30">{day.tempLow}°</span>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-white/30 text-[10px] mt-2">Weather shown in °F · Rainy days marked — outdoor activities may be re-ordered.</p>
+    </div>
+  )
+}
+
+/** Running cost total — sums cost strings from day slots */
+function CostSummary({ days }) {
+  const total = (days ?? []).reduce((sum, day) => {
+    const slots = [day.morning, day.afternoon, day.evening]
+    return slots.reduce((s, slot) => {
+      if (!slot?.cost) return s
+      const match = slot.cost.match(/\$?([\d,]+)/)
+      return s + (match ? parseInt(match[1].replace(',', ''), 10) : 0)
+    }, sum)
+  }, 0)
+  if (total === 0) return null
+  return (
+    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2 flex items-center justify-between text-sm">
+      <span className="text-white/60">Estimated experience cost</span>
+      <span className="text-amber-400 font-bold font-mono">~${total.toLocaleString()}</span>
+    </div>
+  )
+}
+
+/** Uber + Lyft one-tap buttons for a destination */
+function RideButtons({ destination, lat, lng }) {
+  return (
+    <div className="flex gap-2 mt-2">
+      <a href={uberDeepLink(destination, lat, lng)} target="_blank" rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black text-white text-xs font-semibold hover:bg-gray-900 transition">
+        <span>🚗</span> Uber
+      </a>
+      <a href={lyftDeepLink(destination, lat, lng)} target="_blank" rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-600 text-white text-xs font-semibold hover:bg-pink-500 transition">
+        <span>🚗</span> Lyft
+      </a>
+    </div>
+  )
+}
+
 function ShareButton({ itineraryId, headline }) {
   const [copied, setCopied] = useState(false);
   async function handleShare() {
@@ -253,13 +324,13 @@ export default function ItineraryResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const answers = location.state?.answers;
-  // "idle" briefly while React hydrates location.state before we decide to redirect
   const [status, setStatus] = useState("idle");
   const [itinerary, setItinerary] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState("itinerary");
   const [savedItineraryId, setSavedItineraryId] = useState(null);
   const hasFetched = useRef(false);
+  const { weather } = useWeather(answers?.city);
 
   const nights = answers
     ? Math.round((new Date(answers.endDate) - new Date(answers.startDate)) / (1000 * 60 * 60 * 24))
@@ -372,10 +443,17 @@ export default function ItineraryResults() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3 mt-8">
-            <button onClick={() => window.print()} className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">🖨️ Print</button>
+            <button onClick={() => window.print()} className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">Print</button>
             <ShareButton itineraryId={savedItineraryId} headline={itinerary.headline} />
-            <Link to={"/browse?city=" + answers.city} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition">🗺️ Browse Experiences</Link>
-            <Link to="/itinerary" className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">✨ Generate New</Link>
+            {/* Re-optimize: regenerate itinerary with same answers */}
+            <button
+              onClick={() => { hasFetched.current = false; generateItinerary(); }}
+              className="px-4 py-2 bg-white/5 border border-white/10 hover:border-amber-500/40 hover:text-amber-300 rounded-xl text-sm transition"
+            >
+              Re-optimize plan
+            </button>
+            <Link to={"/browse?city=" + answers.city} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition">Browse Experiences</Link>
+            <Link to="/itinerary" className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">New itinerary</Link>
           </div>
         </div>
       </div>
@@ -401,6 +479,8 @@ export default function ItineraryResults() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {activeTab === "itinerary" && (
           <div className="flex flex-col gap-4">
+            <WeatherStrip citySlug={answers.city} />
+            <CostSummary days={itinerary.days} />
             {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
             <BookableExperiences cityKey={answers.city} interests={answers.interests || []} />
           </div>
@@ -408,7 +488,20 @@ export default function ItineraryResults() {
         {activeTab === "hotels" && (
           <div>
             <h2 className="text-xl font-bold mb-2">Recommended Places to Stay</h2>
-            <p className="text-white/50 text-sm mb-6">Curated for your budget in {CITY_LABELS[answers.city]}.</p>
+            <p className="text-white/50 text-sm mb-4">Curated for your budget in {CITY_LABELS[answers.city]}.</p>
+            {/* Booking.com affiliate CTA */}
+            <a
+              href={bookingCityUrl(CITY_LABELS[answers.city])}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between mb-6 p-4 rounded-2xl bg-blue-600/10 border border-blue-500/30 hover:border-blue-400/60 transition group"
+            >
+              <div>
+                <div className="font-bold text-sm text-white">Browse all hotels in {CITY_LABELS[answers.city]}</div>
+                <div className="text-white/50 text-xs mt-0.5">Best rates on Booking.com · Free cancellation on most</div>
+              </div>
+              <span className="text-blue-400 group-hover:text-blue-300 text-sm font-semibold flex-shrink-0 ml-4">View all →</span>
+            </a>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {itinerary.hotelRecommendations?.map((hotel, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition">
@@ -417,11 +510,16 @@ export default function ItineraryResults() {
                     <span className="text-amber-400 font-mono text-sm">{hotel.priceRange}</span>
                   </div>
                   <p className="text-white/60 text-sm">{hotel.reason}</p>
-                  <a href={"https://www.booking.com/search.html?ss=" + encodeURIComponent(hotel.name + " " + CITY_LABELS[answers.city])}
-                    target="_blank" rel="noopener noreferrer"
-                    className="mt-4 flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition">
-                    Check availability →
-                  </a>
+                  <div className="mt-4 flex gap-2">
+                    <a href={bookingCityUrl(hotel.name + ' ' + CITY_LABELS[answers.city])}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-sm text-blue-400 hover:text-blue-300 hover:border-blue-400/60 transition font-semibold">
+                      Book on Booking.com
+                    </a>
+                  </div>
+                  <div className="mt-2">
+                    <RideButtons destination={hotel.name + ', ' + CITY_LABELS[answers.city]} />
+                  </div>
                 </div>
               ))}
             </div>

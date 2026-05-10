@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useWishlist } from '../../hooks/useWishlist'
+import { Heart, MapPin, Clock, Star, ExternalLink } from 'lucide-react'
+import { viatorSearchUrl, openTableUrl } from '../../lib/affiliates.config'
 
 const GRADIENTS = {
   'ci-mia': 'from-[#b2e8f8] to-[#7dd8f5]',
@@ -193,7 +195,7 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         )}
 
         <button
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all z-10
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all z-10
             ${saved
               ? 'bg-red-50 border border-red-200 text-red-500'
               : 'bg-white/90 border border-blue-brand/15 text-gray-400 hover:text-red-400'
@@ -202,9 +204,13 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           `}
           onClick={(e) => { e.stopPropagation(); toggleSave(id) }}
           disabled={isSaving}
-          title={saved ? 'Remove from saved' : 'Save experience'}
+          aria-label={saved ? 'Remove from saved' : 'Save experience'}
         >
-          {saved ? '♥' : '♡'}
+          <Heart
+            size={15}
+            aria-hidden="true"
+            fill={saved ? 'currentColor' : 'none'}
+          />
         </button>
       </div>
 
@@ -216,17 +222,36 @@ export default function ExperienceCard({ experience, showForYou = false }) {
         </h3>
 
         <div className="text-xs text-gray-400 mb-3 flex items-center gap-1.5 flex-wrap">
-          <span>{city}</span>
-          {duration_label && <><span>·</span><span>{duration_label}</span></>}
+          <span className="flex items-center gap-0.5"><MapPin size={11} aria-hidden="true" />{city}</span>
+          {duration_label && <><span>·</span><span className="flex items-center gap-0.5"><Clock size={11} aria-hidden="true" />{duration_label}</span></>}
           {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
-          {rating > 0 && <><span>·</span><span className="text-gold-brand">★ {rating}</span></>}
+          {rating > 0 && <><span>·</span><span className="flex items-center gap-0.5 text-gold-brand"><Star size={11} aria-hidden="true" fill="currentColor" />{rating}</span></>}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
           <PriceTier tier={resolvedTier} />
-          <span className="text-sm text-blue-brand hover:text-blue-600 font-medium transition-colors">
-            View details →
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Viator affiliate CTA for bookable experiences */}
+            {experience?.experience_type && experience.experience_type !== 'outdoor_free' && experience.experience_type !== 'cultural_free' && (
+              <a
+                href={
+                  experience.experience_type === 'restaurant_reserve'
+                    ? openTableUrl(title, city)
+                    : viatorSearchUrl(title, city)
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                aria-label={experience.experience_type === 'restaurant_reserve' ? 'Reserve on OpenTable' : 'Book on Viator'}
+                className="text-gray-400 hover:text-blue-brand transition-colors"
+              >
+                <ExternalLink size={13} aria-hidden="true" />
+              </a>
+            )}
+            <span className="text-sm text-blue-brand hover:text-blue-600 font-medium transition-colors flex items-center gap-0.5">
+              View details →
+            </span>
+          </div>
         </div>
       </div>
     </div>
