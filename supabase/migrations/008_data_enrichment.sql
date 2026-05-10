@@ -34,10 +34,12 @@ CREATE INDEX IF NOT EXISTS idx_experiences_google_place_id
   ON public.experiences (google_place_id)
   WHERE google_place_id IS NOT NULL;
 
--- ── 7. Partial index: stale records (older than 30 days) ─────────────────────
-CREATE INDEX IF NOT EXISTS idx_experiences_stale
-  ON public.experiences (data_freshness ASC)
-  WHERE data_freshness < NOW() - INTERVAL '30 days' OR data_freshness IS NULL;
+-- ── 7. Index on data_freshness for enrichment pipeline ordering ──────────────
+-- Note: NOW() is not immutable so cannot be used in index predicates.
+-- The enrichment script queries WHERE data_freshness < NOW() - INTERVAL '30 days'
+-- at runtime — this plain index covers that query efficiently.
+CREATE INDEX IF NOT EXISTS idx_experiences_data_freshness
+  ON public.experiences (data_freshness ASC NULLS FIRST);
 
 COMMENT ON COLUMN public.experiences.quality_score    IS '0–100. Records below 60 are deprioritised in recommendations.';
 COMMENT ON COLUMN public.experiences.data_freshness   IS 'Last time enrichment pipeline ran for this record.';
