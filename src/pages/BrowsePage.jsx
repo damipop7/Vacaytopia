@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
+import { Clock } from 'lucide-react'
 
 const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
@@ -24,13 +25,13 @@ const CITIES = ALL_CITIES.filter(c =>
 )
 
 const CATEGORIES = [
-  { value: 'all',           label: '🌍 All',          count: null },
-  { value: 'Food & Drink',  label: '🍽️ Food & Drink', count: null },
-  { value: 'Outdoors',      label: '🌿 Outdoors',      count: null },
-  { value: 'Nightlife',     label: '🌙 Nightlife',     count: null },
-  { value: 'Sports',        label: '🏟️ Sports',        count: null },
-  { value: 'Arts & Culture',label: '🎨 Arts',          count: null },
-  { value: 'Wellness',      label: '🧘 Wellness',      count: null },
+  { value: 'all',           label: 'All'          },
+  { value: 'Food & Drink',  label: 'Food & Drink' },
+  { value: 'Outdoors',      label: 'Outdoors'     },
+  { value: 'Nightlife',     label: 'Nightlife'    },
+  { value: 'Sports',        label: 'Sports'       },
+  { value: 'Arts & Culture',label: 'Arts'         },
+  { value: 'Wellness',      label: 'Wellness'     },
 ]
 
 const SORTS = ['Recommended', 'Price ↑', 'Price ↓', 'Top Rated']
@@ -70,7 +71,8 @@ export default function BrowsePage() {
   const [budget,   setBudget]   = useState(500)
   const [sort,     setSort]     = useState('Recommended')
   const [search,   setSearch]   = useState('')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'map'
+  const [viewMode,  setViewMode]  = useState('grid') // 'grid' | 'map'
+  const [openNow,   setOpenNow]   = useState(false)
 
   useEffect(() => {
     if (!cityParam) return
@@ -86,6 +88,20 @@ export default function BrowsePage() {
     limit:     viewMode === 'map' ? 500 : 40,
   })
 
+  // "Open now" check using hours JSONB field (populated by enrichment pipeline)
+  function isOpenNow(exp) {
+    if (!exp.hours) return true // no hours data — assume open
+    const now  = new Date()
+    const day  = ['sun','mon','tue','wed','thu','fri','sat'][now.getDay()]
+    const slot = exp.hours[day]
+    if (!slot || slot === 'closed') return false
+    const [openStr, closeStr] = slot.split('-')
+    if (!openStr || !closeStr) return true
+    const toMins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + (m || 0) }
+    const cur = now.getHours() * 60 + now.getMinutes()
+    return cur >= toMins(openStr) && cur < toMins(closeStr)
+  }
+
   // Client-side search + sort on top of server results
   const filtered = experiences
     .filter(e =>
@@ -93,6 +109,7 @@ export default function BrowsePage() {
       e.title.toLowerCase().includes(search.toLowerCase()) ||
       e.city.toLowerCase().includes(search.toLowerCase())
     )
+    .filter(e => !openNow || isOpenNow(e))
     .sort((a, b) => {
       if (sort === 'Price ↑')   return a.price_per_person - b.price_per_person
       if (sort === 'Price ↓')   return b.price_per_person - a.price_per_person
@@ -237,6 +254,21 @@ export default function BrowsePage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Open now toggle */}
+            <button
+              type="button"
+              onClick={() => setOpenNow(o => !o)}
+              aria-pressed={openNow}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                openNow
+                  ? 'bg-green-600 text-white border-green-600'
+                  : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+              }`}
+            >
+              <Clock size={13} aria-hidden="true" />
+              Open now
+            </button>
+
             <div className="flex rounded-pill border border-blue-brand/15 p-0.5 bg-white">
               {['grid', 'map'].map(m => (
                 <button
@@ -254,13 +286,13 @@ export default function BrowsePage() {
               ))}
             </div>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
               <input
                 type="text"
                 placeholder="Search experiences..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="input-field pl-8 text-sm w-56"
+                className="input-field text-sm w-48 sm:w-56"
+                aria-label="Search experiences"
               />
             </div>
           </div>

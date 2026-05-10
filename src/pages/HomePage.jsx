@@ -4,6 +4,8 @@ import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
+import OnboardingQuiz from '../components/ui/OnboardingQuiz'
+import { Utensils, Trees, Moon, Trophy, Palette, Heart as WellnessIcon } from 'lucide-react'
 
 const VtopiaGlobe = lazy(() => import('../components/ui/VtopiaGlobe'))
 
@@ -12,12 +14,12 @@ const ALT_OUT = 2.14
 const ALT_IN = 1.02
 
 const CATS = [
-  { icon:'🍽️', name:'Food & Drink', q:'Food & Drink' },
-  { icon:'🌿', name:'Outdoors',      q:'Outdoors' },
-  { icon:'🌙', name:'Nightlife',     q:'Nightlife' },
-  { icon:'🏟️', name:'Sports',        q:'Sports' },
-  { icon:'🎨', name:'Arts & Culture',q:'Arts & Culture' },
-  { icon:'🧘', name:'Wellness',      q:'Wellness' },
+  { Icon: Utensils,     name:'Food & Drink',  q:'Food & Drink'  },
+  { Icon: Trees,        name:'Outdoors',       q:'Outdoors'      },
+  { Icon: Moon,         name:'Nightlife',      q:'Nightlife'     },
+  { Icon: Trophy,       name:'Sports',         q:'Sports'        },
+  { Icon: Palette,      name:'Arts & Culture', q:'Arts & Culture'},
+  { Icon: WellnessIcon, name:'Wellness',       q:'Wellness'      },
 ]
 
 function useMatchLg() {
@@ -98,6 +100,7 @@ export default function HomePage() {
 
   return (
     <div style={{ background:'var(--bg)' }}>
+      <OnboardingQuiz />
 
       {/* ── HERO — Globe Section (globe zoom “immerses” layout — headline eases away) ── */}
       <section
@@ -266,14 +269,17 @@ export default function HomePage() {
           <h2 className="font-display font-bold text-3xl text-[#0D1B3E]">What lights you up?</h2>
         </div>
         <div className="max-w-4xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-3">
-          {CATS.map(c => (
+          {CATS.map(({ Icon, name, q }) => (
             <button
-              key={c.name}
-              onClick={() => navigate(`/browse?category=${encodeURIComponent(c.q)}`)}
+              key={name}
+              onClick={() => navigate(`/browse?category=${encodeURIComponent(q)}`)}
+              aria-label={`Browse ${name}`}
               className="bg-white rounded-card py-5 px-3 text-center hover:border-blue-brand hover:shadow-md hover:-translate-y-1 transition-all border border-blue-brand/10 group"
             >
-              <div className="text-3xl mb-2">{c.icon}</div>
-              <div className="text-xs font-semibold text-gray-600 group-hover:text-blue-brand">{c.name}</div>
+              <div className="flex justify-center mb-2 text-blue-light group-hover:text-blue-brand transition-colors">
+                <Icon size={28} strokeWidth={1.6} aria-hidden="true" />
+              </div>
+              <div className="text-xs font-semibold text-gray-600 group-hover:text-blue-brand">{name}</div>
             </button>
           ))}
         </div>
@@ -349,7 +355,7 @@ export default function HomePage() {
             <div className="text-white/50 text-sm">Your data is yours. We never sell it. Ever.</div>
           </div>
           <div className="flex gap-3 flex-wrap">
-            {['🔒 SSL Secured','🛡 GDPR Safe','✓ Verified Reviews','💳 Stripe Payments'].map(t => (
+            {['SSL Secured','GDPR Safe','Verified Reviews','Stripe Payments'].map(t => (
               <span key={t} className="text-xs font-semibold text-white/50 bg-white/6 border border-white/10 px-3 py-1.5 rounded-full">
                 {t}
               </span>

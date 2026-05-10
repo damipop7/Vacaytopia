@@ -34,4 +34,22 @@ export default {
   'general.loading':  'Loading…',
   'general.error':    'Something went wrong. Please try again.',
   'general.back':     'Back',
+
+  /* Browse */
+  'browse.openNow':   'Open now',
+  'browse.allCats':   'All',
+  'browse.search':    'Search experiences...',
+  'browse.noResults': 'No experiences found',
+
+  /* Itinerary */
+  'itinerary.generate': '✨ Generate My Itinerary',
+  'itinerary.continue': 'Continue →',
+  'itinerary.back':     'Back',
+
+  /* Affiliate CTAs */
+  'affil.bookHotel':  'View hotels',
+  'affil.bookViator': 'Book on Viator',
+  'affil.openTable':  'Reserve a table',
+  'affil.getUber':    'Get Uber',
+  'affil.getLyft':    'Get Lyft',
 }

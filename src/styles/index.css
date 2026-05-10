@@ -47,9 +47,15 @@ h1, h2, h3, h4 {
            transition-all duration-200 cursor-pointer;
   }
 
+  /* Card hover: scale + shadow lift — 150ms ease as spec'd */
   .card {
     @apply bg-white rounded-card border border-blue-brand/10
-           shadow-sm hover:shadow-md transition-shadow duration-200;
+           shadow-sm transition-all duration-150 ease-out;
+  }
+  .card:hover {
+    @apply shadow-lg -translate-y-0.5;
+    transform: translateY(-2px) scale(1.018);
+    box-shadow: 0 8px 24px rgba(3,70,148,0.10);
   }
 
   .input-field {
@@ -80,4 +86,20 @@ h1, h2, h3, h4 {
 .browse-map-pin {
   background: transparent !important;
   border: none !important;
+}
+
+/* Safe area for iPhone notch / home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e8f0fb 25%, #d0ddf5 50%, #e8f0fb 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
 }

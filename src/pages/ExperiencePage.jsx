@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useExperience } from '../hooks/useRecommendations'
 import { useWishlist } from '../hooks/useWishlist'
-import { PriceTier } from '../components/cards/ExperienceCard'
+import { PriceTier, getPhotoUrl } from '../components/cards/ExperienceCard'
+import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
+import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
 
 // Only these types go through the Vtopia internal booking flow
 const BOOKABLE_VIA_VTOPIA = new Set(['reservable'])
@@ -218,6 +220,33 @@ function ActionPanel({ exp, saved, onSave }) {
         </a>
       )}
 
+      {/* Affiliate CTAs — restaurant gets OpenTable, others get Viator + Uber/Lyft */}
+      {exp.experience_type === 'restaurant_reserve' && (
+        <a href={openTableUrl(exp.title, exp.city)} target="_blank" rel="noopener noreferrer"
+          className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 rounded-pill border border-[#DA3743]/30 text-[#DA3743] bg-[#DA3743]/5 hover:bg-[#DA3743]/10 text-sm font-semibold transition-all min-h-[40px]"
+          aria-label={`Reserve a table at ${exp.title} on OpenTable`}>
+          Reserve on OpenTable
+        </a>
+      )}
+      {exp.experience_type && !['outdoor_free','cultural_free','transport','free_no_booking','outdoor_info'].includes(exp.experience_type) && exp.experience_type !== 'restaurant_reserve' && (
+        <a href={viatorSearchUrl(exp.title, exp.city)} target="_blank" rel="noopener noreferrer"
+          className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 rounded-pill border border-blue-brand/25 text-blue-brand bg-blue-tint hover:bg-blue-brand/10 text-sm font-semibold transition-all min-h-[40px]"
+          aria-label={`Book ${exp.title} on Viator`}>
+          Also on Viator
+        </a>
+      )}
+      {/* One-tap Uber / Lyft */}
+      <div className="flex gap-2 mb-3">
+        <a href={uberDeepLink(exp.title, exp.lat, exp.lng)} target="_blank" rel="noopener noreferrer" aria-label={`Uber to ${exp.title}`}
+          className="flex-1 py-2 rounded-pill bg-black text-white text-xs font-semibold text-center hover:bg-gray-800 transition min-h-[36px] flex items-center justify-center">
+          Get Uber
+        </a>
+        <a href={lyftDeepLink(exp.title, exp.lat, exp.lng)} target="_blank" rel="noopener noreferrer" aria-label={`Lyft to ${exp.title}`}
+          className="flex-1 py-2 rounded-pill bg-pink-600 text-white text-xs font-semibold text-center hover:bg-pink-500 transition min-h-[36px] flex items-center justify-center">
+          Get Lyft
+        </a>
+      </div>
+
       {/* Local tips */}
       {tipLines.length > 0 && (
         <div className="bg-blue-tint rounded-lg p-4 mb-4">
@@ -240,24 +269,28 @@ function ActionPanel({ exp, saved, onSave }) {
       {/* Save + share */}
       <button
         onClick={onSave}
-        className={`w-full py-2.5 rounded-pill text-sm font-semibold border transition-all mb-2 min-h-[44px] ${
+        aria-label={saved ? 'Remove from saved' : 'Save to Wishlist'}
+        className={`w-full py-2.5 rounded-pill text-sm font-semibold border transition-all mb-2 min-h-[44px] flex items-center justify-center gap-2 ${
           saved ? 'bg-red-50 border-red-200 text-red-500' : 'btn-outline'
         }`}
       >
-        {saved ? '♥ Saved' : '♡ Save to Wishlist'}
+        <Heart size={15} aria-hidden="true" fill={saved ? 'currentColor' : 'none'} />
+        {saved ? 'Saved' : 'Save to Wishlist'}
       </button>
 
       <button
         type="button"
         onClick={copyLink}
-        className="w-full py-2 text-xs text-gray-400 hover:text-blue-brand transition-colors"
+        aria-label={copied ? 'Link copied' : 'Share this experience'}
+        className="w-full py-2 text-xs text-gray-400 hover:text-blue-brand transition-colors flex items-center justify-center gap-1.5"
       >
-        {copied ? '✓ Link copied' : '🔗 Share this experience'}
+        <Share2 size={12} aria-hidden="true" />
+        {copied ? 'Link copied' : 'Share this experience'}
       </button>
 
       {/* Trust badges */}
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-blue-brand/8">
-        {['🔒 SSL Secured', '🛡 GDPR Safe', '✓ Free to browse'].map(t => (
+        {[['SSL Secured', ShieldCheck], ['GDPR Safe', ShieldCheck], ['Free to browse', ShieldCheck]].map(([t]) => (
           <span key={t} className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">{t}</span>
         ))}
       </div>
@@ -360,19 +393,23 @@ function BookingPanel({ exp, saved, onSave }) {
       <button type="button" onClick={goBook} className="btn-primary w-full mb-3 min-h-[44px]">Book via Vtopia →</button>
       <button
         onClick={onSave}
-        className={`w-full py-2.5 rounded-pill text-sm font-semibold border transition-all min-h-[44px] ${
+        aria-label={saved ? 'Remove from saved' : 'Save to Wishlist'}
+        className={`w-full py-2.5 rounded-pill text-sm font-semibold border transition-all min-h-[44px] flex items-center justify-center gap-2 ${
           saved ? 'bg-red-50 border-red-200 text-red-500' : 'btn-outline'
         }`}
       >
-        {saved ? '♥ Saved' : '♡ Save to Wishlist'}
+        <Heart size={15} aria-hidden="true" fill={saved ? 'currentColor' : 'none'} />
+        {saved ? 'Saved' : 'Save to Wishlist'}
       </button>
 
-      <button type="button" onClick={copyLink} className="w-full py-2 text-xs text-gray-400 hover:text-blue-brand transition-colors mt-2">
-        {copied ? '✓ Link copied' : '🔗 Share this experience'}
+      <button type="button" onClick={copyLink} aria-label={copied ? 'Link copied' : 'Share this experience'}
+        className="w-full py-2 text-xs text-gray-400 hover:text-blue-brand transition-colors mt-2 flex items-center justify-center gap-1.5">
+        <Share2 size={12} aria-hidden="true" />
+        {copied ? 'Link copied' : 'Share this experience'}
       </button>
 
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-blue-brand/8">
-        {['🔒 SSL Secured', '✓ Free cancellation', '🛡 GDPR Safe'].map(t => (
+        {['SSL Secured', 'Free cancellation', 'GDPR Safe'].map(t => (
           <span key={t} className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">{t}</span>
         ))}
       </div>
@@ -462,10 +499,32 @@ function ExperiencePageInner({ id }) {
           {/* ── Left column ── */}
           <div>
             {/* Hero */}
-            <div className={`h-64 md:h-80 rounded-card bg-gradient-to-br ${grad} flex items-center justify-center text-8xl mb-6 relative`}>
-              <span style={{fontSize:80}}>{exp.image_emoji || '🌍'}</span>
+            <div className={`h-64 md:h-80 rounded-card bg-gradient-to-br ${grad} overflow-hidden mb-6 relative`}>
+              {exp.image_url ? (
+                <img
+                  src={exp.image_url}
+                  alt={`${exp.title} in ${exp.city}`}
+                  width={800}
+                  height={320}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              ) : (
+                <img
+                  src={getPhotoUrl(exp.category, exp.city)}
+                  alt={`${exp.category} experience in ${exp.city}`}
+                  width={800}
+                  height={320}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              )}
               {exp.is_featured && (
-                <div className="absolute top-4 left-4 bg-gold-brand text-white text-xs font-bold px-3 py-1 rounded-full">✨ Featured</div>
+                <div className="absolute top-4 left-4 bg-gold-brand text-white text-xs font-bold px-3 py-1 rounded-full">Featured</div>
               )}
             </div>
 
@@ -474,9 +533,9 @@ function ExperiencePageInner({ id }) {
               <span className={`tag-category ${catStyle} mb-3`}>{exp.category}</span>
               <h1 className="font-display font-black text-3xl text-[#0D1B3E] mb-3 leading-tight">{exp.title}</h1>
               <div className="flex items-center gap-3 text-sm text-gray-400 flex-wrap">
-                <span>📍 {exp.city}</span>
-                {exp.duration_label && <><span>·</span><span>⏱ {exp.duration_label}</span></>}
-                {exp.max_guests && isBookable && <><span>·</span><span>👥 Max {exp.max_guests} guests</span></>}
+                <span className="flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{exp.city}</span>
+                {exp.duration_label && <><span>·</span><span className="flex items-center gap-1"><Clock size={14} aria-hidden="true" />{exp.duration_label}</span></>}
+                {exp.max_guests && isBookable && <><span>·</span><span className="flex items-center gap-1"><Users size={14} aria-hidden="true" />Max {exp.max_guests}</span></>}
                 {exp.rating > 0 && <><span>·</span><span className="text-gold-brand font-semibold">★ {exp.rating} ({exp.review_count?.toLocaleString()} reviews)</span></>}
               </div>
 
