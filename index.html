@@ -28,9 +28,10 @@
     <meta name="twitter:description" content="Discover the best of Kansas City for FIFA World Cup 2026. AI itineraries, BBQ trails, live music, and local experiences." />
     <meta name="twitter:image" content="https://www.vtopia.world/og-image.png" />
 
-    <!-- Favicon -->
+    <!-- Favicon & PWA manifest -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Performance: preconnect to external origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -73,5 +74,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <!-- Analytics: Plausible (privacy-first, no cookies, GDPR-compliant) -->
+    <!-- Register vtopia.world at plausible.io/sites to activate — safe to ship before registration -->
+    <script defer data-domain="vtopia.world" src="https://plausible.io/js/script.js"></script>
   </body>
 </html>

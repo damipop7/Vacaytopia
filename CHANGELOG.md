@@ -69,7 +69,7 @@
 
 ### Developer tooling
 - Experience schema documented; migration `005` adds the full `experience_type` enum to the database
-- 16-type taxonomy documented: `restaurant_reserve`, `food_walkup`, `food_delivery`, `outdoor_free`, `outdoor_paid`, `cultural_free`, `cultural_paid`, `nightlife_walkin`, `nightlife_ticketed`, `ticketed`, `shopping`, `sports_event`, `transport`, `hotel`, `free_no_booking`, `outdoor_info`
+- 16-type taxonomy: `restaurant_reserve`, `food_walkup`, `food_delivery`, `outdoor_free`, `outdoor_paid`, `cultural_free`, `cultural_paid`, `nightlife_walkin`, `nightlife_ticketed`, `ticketed`, `shopping`, `sports_event`, `transport`, `hotel`, `free_no_booking`, `outdoor_info`
 
 ### Operator tools
 - **Self-listing page** (`/list-your-experience`) — public form for operators to submit their experience; linked in footer
@@ -152,6 +152,30 @@
 
 ---
 
+## 2026-05-11 — Sprint 7 · Codebase cleanup & open item completion (PR #7)
+
+### Completed
+- **CITY_LABELS & BUDGET_LABELS centralised** — extracted to `src/lib/cities.js`; `ItineraryResults.jsx` and `ItineraryView.jsx` now import from it; test file updated to import from the shared module instead of maintaining a third inline copy
+- **Plausible analytics wired** — privacy-first, no-cookie, GDPR-compliant script added to `index.html`; activates as soon as `vtopia.world` is registered at plausible.io/sites (safe to ship before registration — script does nothing if domain is unknown)
+- **PWA manifest added** — `public/site.webmanifest` created with name, theme colour `#034694`, and icon references; `<link rel="manifest">` added to `index.html`
+- **`public/test.html` removed** — dev-only QA artifact was publicly accessible and exposed internal Supabase URLs and owner email address
+- **All locale files confirmed complete** — `es.js`, `fr.js`, `de.js`, `pt.js` all have every key from `en.js`; no missing translations
+
+### Open — requires external action
+
+| Item | Blocker | How to unblock |
+|------|---------|----------------|
+| Migration 009 not applied to production | Needs Supabase CLI or SQL editor | `supabase db push` or paste `supabase/migrations/009_link_status.sql` into Supabase SQL editor |
+| Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
+| `provider_email` empty in DB | Manual data entry per experience | Supabase dashboard → experiences table → fill `provider_email` per active KC experience |
+| Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
+| OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — currently referenced in `og:image` meta but file doesn't exist |
+| FIFA match schedule | Needs API key or manual entry | Register at api-football.com or manually enter confirmed KC 2026 match dates in `WorldCupPage.jsx` |
+| Plausible account | Needs account creation | Register `vtopia.world` at plausible.io/sites — script is already in `index.html` |
+| Post-WC cleanup | Time-based | After tournament ends: search `// TODO: re-enable post-World-Cup` in `src/` and revert all flagged code |
+
+---
+
 ## Launch configuration — required env vars
 
 | Variable | Where set | Value / notes |
@@ -176,17 +200,6 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx
 ```
 
-## Open items
-
-| Item | Status |
-|------|--------|
-| FIFA match schedule data | Stubbed with placeholder UI — needs API-Football / RapidAPI key |
-| Spanish translations | `src/locales/es.json` scaffolded; strings need human translation |
-| Provider email addresses | `experiences.provider_email` column exists; needs populating for booking notification emails |
-| Favicon PNG sizes | Only `favicon.svg` in `public/`; 192×192 and 512×512 PNGs needed for PWA / Android |
-| Analytics | No Plausible/GA configured — add before World Cup traffic hits |
-| Post-WC cleanup | Search `// TODO: re-enable post-World-Cup` in `src/` for all flags to reverse after tournament |
-
 ---
 
 ## Summary by category
@@ -204,6 +217,8 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx
 | Affiliate revenue | Booking.com, Viator, Uber, Lyft, OpenTable integrated |
 | Infrastructure | Branch protection, email forwarding, Resend domain, Places API (New) |
 | Operator | Self-listing page, link validator, admin dashboard |
-| i18n | English/Spanish scaffold, language selector |
+| i18n | English/Spanish/French/German/Portuguese scaffold, language selector |
 | Legal | Terms of Service, Privacy policy corrections |
 | Offline | Service worker, offline fallback page |
+| Analytics | Plausible script wired (activation pending account registration) |
+| PWA | site.webmanifest, manifest link in index.html |

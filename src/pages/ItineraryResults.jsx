@@ -4,25 +4,10 @@ import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
 import { useWeather } from "../hooks/useWeather";
 import { bookingCityUrl, uberDeepLink, lyftDeepLink } from "../lib/affiliates.config";
+import { CITY_LABELS, BUDGET_LABELS } from "../lib/cities";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-const CITY_LABELS = {
-  nyc: "New York City",
-  miami: "Miami",
-  orlando: "Orlando",
-  "las-vegas": "Las Vegas",
-  "new-orleans": "New Orleans",
-  austin: "Austin",
-  "kansas-city": "Kansas City",
-};
-
-const BUDGET_LABELS = {
-  budget: "$100-200/day",
-  mid: "$200-350/day",
-  premium: "$350-500/day",
-};
 
 const INTEREST_TAG_MAP = {
   food:      ["cuisine:american", "cuisine:burger", "cuisine:chicken", "cuisine:coffee_shop",

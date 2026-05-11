@@ -2,16 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
-
-const CITY_LABELS = {
-  nyc: "New York City",
-  miami: "Miami",
-  orlando: "Orlando",
-  "las-vegas": "Las Vegas",
-  "new-orleans": "New Orleans",
-  austin: "Austin",
-  "kansas-city": "Kansas City",
-};
+import { CITY_LABELS } from "../lib/cities";
 
 const BUDGET_LABELS = {
   budget: "$100-200/day",

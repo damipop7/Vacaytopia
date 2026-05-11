@@ -1,0 +1,22 @@
+{
+  "name": "Vtopia — Discover Kansas City",
+  "short_name": "Vtopia",
+  "description": "Handpicked Kansas City experiences for FIFA World Cup 2026 visitors.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#034694",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

@@ -5,9 +5,10 @@
  * that the edge function relies on. Failures here mean Claude gets wrong context.
  */
 import { describe, it, expect } from 'vitest'
+import { CITY_LABELS as FRONTEND_CITY_LABELS, BUDGET_LABELS as FRONTEND_BUDGET_LABELS } from '../lib/cities'
 
 // Replicated from supabase/functions/generate-itinerary/index.ts
-// If these drift from the source, the tests will catch the discrepancy too.
+// Tests catch drift between the edge function copy and the shared frontend module.
 const EDGE_CITY_LABELS = {
   nyc: 'New York City',
   miami: 'Miami',
@@ -28,23 +29,6 @@ const EDGE_HOTEL_TIER = {
   budget: 'budget-friendly hostels and guesthouses',
   mid: '3-4 star hotels and boutique stays',
   premium: 'boutique hotels and luxury properties',
-}
-
-// Replicated from src/pages/ItineraryResults.jsx
-const FRONTEND_CITY_LABELS = {
-  nyc: 'New York City',
-  miami: 'Miami',
-  orlando: 'Orlando',
-  'las-vegas': 'Las Vegas',
-  'new-orleans': 'New Orleans',
-  austin: 'Austin',
-  'kansas-city': 'Kansas City',
-}
-
-const FRONTEND_BUDGET_LABELS = {
-  budget: '$100-200/day',
-  mid: '$200-350/day',
-  premium: '$350-500/day',
 }
 
 function buildPrompt(answers, experiences = []) {
