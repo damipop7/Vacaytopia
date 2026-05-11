@@ -69,7 +69,7 @@
 
 ### Developer tooling
 - Experience schema documented; migration `005` adds the full `experience_type` enum to the database
-- `EXPERIENCE_OVERHAUL_SUMMARY.md` added with type counts, QA checklist, and known manual data gaps
+- 16-type taxonomy documented: `restaurant_reserve`, `food_walkup`, `food_delivery`, `outdoor_free`, `outdoor_paid`, `cultural_free`, `cultural_paid`, `nightlife_walkin`, `nightlife_ticketed`, `ticketed`, `shopping`, `sports_event`, `transport`, `hotel`, `free_no_booking`, `outdoor_info`
 
 ### Operator tools
 - **Self-listing page** (`/list-your-experience`) — public form for operators to submit their experience; linked in footer
@@ -149,6 +149,43 @@
 ### Additional fixes
 - `privacy@vtopia.com` corrected to `privacy@vtopia.world` in PrivacyPage (body text and mailto link)
 - Google OAuth consent screen documented in `docs/google-oauth-fix.md` (Supabase-managed; no client credentials in codebase)
+
+---
+
+## Launch configuration — required env vars
+
+| Variable | Where set | Value / notes |
+|----------|-----------|---------------|
+| `VITE_ACTIVE_CITIES` | Vercel | `Kansas City` — enables KC-only mode. Clear after World Cup to restore all cities. |
+| `VITE_FEATURE_WORLD_CUP` | Vercel | `true` — enables `/world-cup` page and nav link |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Vercel | `pk_live_…` |
+| `VITE_SUPABASE_URL` | Vercel | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Vercel | Supabase anon key |
+| `VITE_OPENWEATHER_API_KEY` | Vercel | OpenWeatherMap key — enables 7-day forecast strip on itinerary |
+| `VITE_BOOKING_AFFILIATE_ID` | Vercel | Booking.com affiliate ID |
+| `VITE_GYG_PARTNER_ID` | Vercel | GetYourGuide partner ID |
+| `RESEND_API_KEY` | Supabase secrets | `re_…` — activates booking confirmation emails |
+| `STRIPE_WEBHOOK_SECRET` | Supabase secrets | `whsec_…` — validates Stripe webhook signatures |
+| `ANTHROPIC_API_KEY` | Supabase secrets | Claude Haiku key for `generate-itinerary` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env` (scripts only) | Required for `discoverExperiences.ts` and `validateLinks.ts` |
+
+To set Supabase edge function secrets:
+```bash
+supabase secrets set RESEND_API_KEY=re_xxx
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx
+```
+
+## Open items
+
+| Item | Status |
+|------|--------|
+| FIFA match schedule data | Stubbed with placeholder UI — needs API-Football / RapidAPI key |
+| Spanish translations | `src/locales/es.json` scaffolded; strings need human translation |
+| Provider email addresses | `experiences.provider_email` column exists; needs populating for booking notification emails |
+| Favicon PNG sizes | Only `favicon.svg` in `public/`; 192×192 and 512×512 PNGs needed for PWA / Android |
+| Analytics | No Plausible/GA configured — add before World Cup traffic hits |
+| Post-WC cleanup | Search `// TODO: re-enable post-World-Cup` in `src/` for all flags to reverse after tournament |
 
 ---
 
