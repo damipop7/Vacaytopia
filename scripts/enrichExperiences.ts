@@ -35,42 +35,58 @@ interface Experience {
   [key: string]: unknown
 }
 
+const PRICE_LEVEL_MAP: Record<string, number> = {
+  PRICE_LEVEL_FREE:           0,
+  PRICE_LEVEL_INEXPENSIVE:    1,
+  PRICE_LEVEL_MODERATE:       2,
+  PRICE_LEVEL_EXPENSIVE:      3,
+  PRICE_LEVEL_VERY_EXPENSIVE: 4,
+}
+
 async function fetchGooglePlaces(exp: Experience): Promise<Record<string, unknown> | null> {
   if (!GOOGLE_KEY) return null
-  const query = encodeURIComponent(`${exp.title} ${exp.city}`)
-  const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,name,rating,user_ratings_total,price_level,website,opening_hours&key=${GOOGLE_KEY}`
 
-  const res  = await fetch(url)
-  const data = await res.json() as { candidates?: Array<Record<string, unknown>>; status?: string }
-  if (data.status !== 'OK' || !data.candidates?.length) return null
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': GOOGLE_KEY,
+      'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours',
+    },
+    body: JSON.stringify({ textQuery: `${exp.title} ${exp.city}` }),
+  })
 
-  const place = data.candidates[0]
+  const data = await res.json() as { places?: Array<Record<string, unknown>> }
+  if (!data.places?.length) return null
+
+  const place = data.places[0]
+  const priceStr = place.priceLevel as string | undefined
+
   return {
-    google_place_id:     place.place_id,
+    google_place_id:     place.id,
     google_rating:       place.rating,
-    google_review_count: place.user_ratings_total,
-    google_price_level:  place.price_level,
-    place_website:       (place.website as string) || null,
-    hours:               (place.opening_hours as { weekday_text?: string[] })?.weekday_text
-      ? parseGoogleHours((place.opening_hours as { weekday_text: string[] }).weekday_text)
+    google_review_count: place.userRatingCount,
+    google_price_level:  priceStr ? (PRICE_LEVEL_MAP[priceStr] ?? null) : null,
+    place_website:       (place.websiteUri as string) || null,
+    hours:               (place.regularOpeningHours as { weekdayDescriptions?: string[] })?.weekdayDescriptions
+      ? parseGoogleHours((place.regularOpeningHours as { weekdayDescriptions: string[] }).weekdayDescriptions)
       : null,
   }
 }
 
-function parseGoogleHours(weekdayText: string[]): Record<string, string> {
+function parseGoogleHours(weekdayDescriptions: string[]): Record<string, string> {
   const DAY_MAP: Record<string, string> = {
     Monday: 'mon', Tuesday: 'tue', Wednesday: 'wed', Thursday: 'thu',
     Friday: 'fri', Saturday: 'sat', Sunday: 'sun',
   }
   const hours: Record<string, string> = {}
-  for (const line of weekdayText) {
+  for (const line of weekdayDescriptions) {
     const [dayPart, timePart] = line.split(': ')
     const key = DAY_MAP[dayPart?.trim()]
     if (!key) continue
     if (!timePart || timePart.toLowerCase() === 'closed') { hours[key] = 'closed'; continue }
-    // Convert "9:00 AM – 9:00 PM" → "09:00-21:00"
     const to24 = (t: string) => {
-      const [time, ampm] = t.trim().split(' ')
+      const [time, ampm] = t.trim().split(' ')
       const [h, m = '00'] = time.split(':')
       let hour = parseInt(h, 10)
       if (ampm === 'PM' && hour !== 12) hour += 12
