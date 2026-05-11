@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import {
   Elements,
@@ -183,10 +183,11 @@ export default function BookingPage() {
   const { experienceId } = useParams()
   const navigate         = useNavigate()
   const location         = useLocation()
-  const { user, profile } = useAuthStore()
+  const { user, profile, loading: authLoading } = useAuthStore()
   const { data: exp, isLoading } = useExperience(experienceId)
   const { createBooking } = useBookings()
   const prefillApplied   = useRef('')
+  const errorRef         = useRef(null)
 
   const [step,    setStep]    = useState(1)
   const [date,    setDate]    = useState('')
@@ -225,8 +226,13 @@ export default function BookingPage() {
     setAdults(a => Math.min(a, maxGuests))
   }, [exp, maxGuests])
 
+  useEffect(() => {
+    if (error && errorRef.current) errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [error])
+
   const STEPS = ['Details', 'Booking', 'Payment', 'Confirmed']
   const bumpAdults = (delta) => setAdults(a => Math.min(maxGuests, Math.max(1, a + delta)))
+  const [editingDetails, setEditingDetails] = useState(!location.state?.date)
 
   const copyBookingSummary = useCallback(() => {
     const lines = [
@@ -269,13 +275,18 @@ export default function BookingPage() {
     setStep(4)
   }
 
-  if (isLoading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <div className="text-blue-brand font-display font-bold text-xl">Loading...</div>
+  if (authLoading || isLoading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg)' }}>
+      <div className="w-10 h-10 border-2 border-blue-brand/20 border-t-blue-brand rounded-full animate-spin" />
+      <p className="text-sm text-gray-400">Loading your booking…</p>
     </div>
   )
+
+  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />
+
   if (!exp) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <p className="text-gray-500 text-sm">Experience not found.</p>
       <button onClick={() => navigate('/browse')} className="btn-primary">Back to Browse</button>
     </div>
   )
@@ -352,38 +363,68 @@ export default function BookingPage() {
             {/* STEP 2 — Booking details */}
             {step === 2 && (
               <div className="space-y-4">
-                <div className="bg-white rounded-card border border-blue-brand/10 p-6">
-                  <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Choose a date</h2>
-                  <input type="date" min={today} value={date} onChange={e => setDate(e.target.value)} className="input-field" />
-                </div>
-                <div className="bg-white rounded-card border border-blue-brand/10 p-6">
-                  <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Pick a time</h2>
-                  <div className="grid grid-cols-3 gap-2">
-                    {TIMES.map(t => (
-                      <button key={t} onClick={() => setTime(t)}
-                        className={`py-2.5 px-3 rounded-[9px] text-sm font-semibold border transition-all ${
-                          time === t
-                            ? 'bg-blue-brand text-white border-blue-brand'
-                            : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
-                        }`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-white rounded-card border border-blue-brand/10 p-6">
-                  <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Guests</h2>
-                  <div className="flex items-center justify-between">
-                    <div><div className="font-semibold text-sm">Adults</div><div className="text-xs text-gray-400">Ages 13+</div></div>
-                    <div className="flex items-center gap-4">
-                      <button type="button" onClick={() => bumpAdults(-1)} disabled={adults <= 1}
-                        className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">−</button>
-                      <span className="font-bold text-lg w-6 text-center">{adults}</span>
-                      <button type="button" onClick={() => bumpAdults(1)} disabled={adults >= maxGuests}
-                        className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">+</button>
+                {!editingDetails ? (
+                  <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Your selections</h2>
+                      <button type="button" onClick={() => setEditingDetails(true)}
+                        className="text-xs font-semibold text-blue-brand hover:underline">Change</button>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">📅 Date</span>
+                        <span className="font-semibold text-[#0D1B3E]">{date}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">🕐 Time</span>
+                        <span className="font-semibold text-[#0D1B3E]">{time}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">👥 Guests</span>
+                        <span className="font-semibold text-[#0D1B3E]">{adults} adult{adults !== 1 ? 's' : ''}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Choose a date</h2>
+                        {date && <button type="button" onClick={() => setEditingDetails(false)}
+                          className="text-xs font-semibold text-blue-brand hover:underline">Done</button>}
+                      </div>
+                      <input type="date" min={today} value={date} onChange={e => setDate(e.target.value)} className="input-field" />
+                    </div>
+                    <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+                      <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Pick a time</h2>
+                      <div className="grid grid-cols-3 gap-2">
+                        {TIMES.map(t => (
+                          <button key={t} onClick={() => setTime(t)}
+                            className={`py-2.5 px-3 rounded-[9px] text-sm font-semibold border transition-all ${
+                              time === t
+                                ? 'bg-blue-brand text-white border-blue-brand'
+                                : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+                            }`}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+                      <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Guests</h2>
+                      <div className="flex items-center justify-between">
+                        <div><div className="font-semibold text-sm">Adults</div><div className="text-xs text-gray-400">Ages 13+</div></div>
+                        <div className="flex items-center gap-4">
+                          <button type="button" onClick={() => bumpAdults(-1)} disabled={adults <= 1}
+                            className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">−</button>
+                          <span className="font-bold text-lg w-6 text-center">{adults}</span>
+                          <button type="button" onClick={() => bumpAdults(1)} disabled={adults >= maxGuests}
+                            className="w-8 h-8 rounded-full border border-blue-brand/20 text-blue-brand font-bold hover:bg-blue-tint transition-colors disabled:opacity-35 disabled:cursor-not-allowed">+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className="bg-white rounded-card border border-blue-brand/10 p-6">
                   <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">Contact details</h2>
                   <div className="grid grid-cols-2 gap-3 mb-3">
@@ -402,7 +443,12 @@ export default function BookingPage() {
                       value={contact.specialRequests} onChange={e => setContact(c => ({ ...c, specialRequests: e.target.value }))} />
                   </div>
                 </div>
-                {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-[9px] p-3 text-sm">{error}</div>}
+                {error && (
+                  <div ref={errorRef} role="alert" className="bg-red-50 border border-red-300 text-red-700 rounded-[9px] p-3 text-sm flex items-start gap-2">
+                    <span className="mt-0.5 flex-shrink-0">⚠</span>
+                    <span>{error}</span>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <button onClick={() => { setStep(1); setError('') }} className="btn-outline flex-1 text-sm">← Back</button>
                   <button
@@ -524,13 +570,7 @@ export default function BookingPage() {
                 </div>
                 <div className="flex justify-between py-1.5 text-xs items-center gap-2">
                   <span className="text-gray-400 flex-shrink-0">👥 Guests</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => bumpAdults(-1)} disabled={adults <= 1}
-                      className="w-7 h-7 rounded-full border border-blue-brand/20 text-blue-brand text-sm font-bold hover:bg-blue-tint disabled:opacity-35 disabled:cursor-not-allowed">−</button>
-                    <span className="font-semibold text-[#0D1B3E] w-8 text-center tabular-nums">{adults}</span>
-                    <button type="button" onClick={() => bumpAdults(1)} disabled={adults >= maxGuests}
-                      className="w-7 h-7 rounded-full border border-blue-brand/20 text-blue-brand text-sm font-bold hover:bg-blue-tint disabled:opacity-35 disabled:cursor-not-allowed">+</button>
-                  </div>
+                  <span className="font-medium text-[#0D1B3E]">{adults} adult{adults !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="border-t border-blue-brand/8 mt-3 pt-3">
                   <div className="flex justify-between text-xs mb-1">

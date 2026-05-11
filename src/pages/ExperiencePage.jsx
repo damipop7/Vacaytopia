@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useExperience } from '../hooks/useRecommendations'
 import { useWishlist } from '../hooks/useWishlist'
-import { PriceTier, getPhotoUrl } from '../components/cards/ExperienceCard'
+import { PriceTier, getPhotoUrl, pickHighlights } from '../components/cards/ExperienceCard'
 import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
 import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
 
@@ -40,11 +40,12 @@ function addUtm(url) {
 
 function resolveCta(exp) {
   const type        = exp.experience_type || 'reservable'
-  const external    = exp.external_url || exp.website || null
+  const linkOk      = !exp.link_status || exp.link_status === 'verified'
+  const external    = linkOk ? (exp.external_url || exp.website || null) : null
   const mapsUrl     = addUtm(exp.maps_url) ||
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${exp.title} ${exp.city}`)}&${UTM}`
-  const ticketLink  = addUtm(exp.ticket_url) || addUtm(external) || mapsUrl
-  const deliveryLink= addUtm(exp.delivery_url) || addUtm(external) || mapsUrl
+  const ticketLink  = addUtm(linkOk ? exp.ticket_url : null) || addUtm(external) || mapsUrl
+  const deliveryLink= addUtm(linkOk ? exp.delivery_url : null) || addUtm(external) || mapsUrl
   const extLink     = addUtm(external) || mapsUrl
 
   switch (type) {
@@ -426,6 +427,9 @@ export default function ExperiencePage() {
 
 function ExperiencePageInner({ id }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromItinerary = searchParams.get('from') === 'itinerary'
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   const { data: exp, isLoading, error } = useExperience(id)
   const { isSaved, toggleSave } = useWishlist()
 
@@ -490,6 +494,25 @@ function ExperiencePageInner({ id }) {
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
     </Helmet>
     <div style={{ background:'var(--bg)' }}>
+      {fromItinerary && !bannerDismissed && (
+        <div className="sticky top-[57px] z-40 bg-blue-brand text-white px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="font-semibold hover:underline flex items-center gap-1.5"
+          >
+            ← Back to your itinerary
+          </button>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            aria-label="Dismiss"
+            className="text-white/60 hover:text-white transition-colors text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto px-6 py-8">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-brand mb-6 transition-colors">
           ← Back
@@ -610,19 +633,28 @@ function ExperiencePageInner({ id }) {
               </div>
             )}
 
-            {/* Tags */}
-            {exp.tags?.length > 0 && (
-              <div className="bg-white rounded-card border border-blue-brand/10 p-6 mb-4">
-                <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-3">Highlights</h2>
-                <div className="flex flex-wrap gap-2">
-                  {exp.tags.map((tag, i) => (
-                    <span key={i} className="text-xs font-semibold text-blue-brand bg-blue-tint border border-blue-brand/15 px-3 py-1 rounded-pill">
-                      {tag}
-                    </span>
-                  ))}
+            {/* Tags / Highlights */}
+            {(() => {
+              const { shown, overflow } = pickHighlights(exp.tags, 4)
+              if (!shown.length) return null
+              return (
+                <div className="bg-white rounded-card border border-blue-brand/10 p-6 mb-4">
+                  <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-3">Highlights</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {shown.map((tag, i) => (
+                      <span key={i} className="text-xs font-semibold text-blue-brand bg-blue-tint border border-blue-brand/15 px-3 py-1 rounded-pill">
+                        {tag}
+                      </span>
+                    ))}
+                    {overflow > 0 && (
+                      <span className="text-xs font-medium text-gray-400 bg-gray-50 border border-gray-100 px-3 py-1 rounded-pill">
+                        +{overflow} more
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Good to know — only for bookable experiences */}
             {isBookable && (

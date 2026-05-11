@@ -1,10 +1,10 @@
-import { useState, useEffect, lazy, Suspense, Fragment } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, Fragment } from 'react'
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
-import { Clock } from 'lucide-react'
+import { Clock, SlidersHorizontal, X } from 'lucide-react'
 
 const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
@@ -71,8 +71,11 @@ export default function BrowsePage() {
   const [budget,   setBudget]   = useState(500)
   const [sort,     setSort]     = useState('Recommended')
   const [search,   setSearch]   = useState('')
-  const [viewMode,  setViewMode]  = useState('grid') // 'grid' | 'map'
-  const [openNow,   setOpenNow]   = useState(false)
+  const [viewMode,      setViewMode]      = useState('grid') // 'grid' | 'map'
+  const [openNow,       setOpenNow]       = useState(false)
+  const [mobileFilters, setMobileFilters] = useState(false)
+  const pillBarRef  = useRef(null)
+  const activePillRef = useRef(null)
 
   useEffect(() => {
     if (!cityParam) return
@@ -80,6 +83,12 @@ export default function BrowsePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- keep filter in sync when /browse/:city changes
     if (resolved) setCity(resolved)
   }, [cityParam])
+
+  useEffect(() => {
+    if (activePillRef.current && pillBarRef.current) {
+      activePillRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [category])
 
   const { data: experiences = [], isLoading, error } = useRecommendations({
     city:      city !== 'all' ? city : undefined,
@@ -234,8 +243,101 @@ export default function BrowsePage() {
         </div>
       </aside>
 
+      {/* ── Mobile filter drawer ── */}
+      {mobileFilters && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFilters(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Filters</h2>
+              <button onClick={() => setMobileFilters(false)} className="w-8 h-8 flex items-center justify-center rounded-full border border-blue-brand/15 text-gray-400 hover:text-blue-brand">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mb-5">
+              <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Category</div>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map(c => (
+                  <button key={c.value} onClick={() => { setCategory(c.value); setMobileFilters(false) }}
+                    className={`min-h-[44px] px-4 py-2 rounded-[9px] text-sm font-medium transition-all ${
+                      category === c.value ? 'bg-blue-brand text-white' : 'border border-blue-brand/15 text-gray-500'
+                    }`}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-5">
+              <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Budget per experience</div>
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>$0</span>
+                <span className="font-bold text-blue-brand">{budget >= 500 ? '$500+' : `$${budget}`}</span>
+              </div>
+              <input type="range" min={0} max={500} step={5} value={budget}
+                onChange={e => setBudget(Number(e.target.value))} className="w-full accent-[#034694]" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Sort by</div>
+              <div className="flex flex-wrap gap-2">
+                {SORTS.map(s => (
+                  <button key={s} onClick={() => { setSort(s); setMobileFilters(false) }}
+                    className={`min-h-[44px] px-4 py-2 rounded-pill text-sm font-semibold transition-all ${
+                      sort === s ? 'bg-blue-brand text-white' : 'border border-blue-brand/15 text-gray-500'
+                    }`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Main ── */}
       <div className="flex-1 p-5 min-w-0">
+
+        {/* Mobile: horizontal scrollable category pill bar */}
+        <div className="lg:hidden mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            {/* Scrollable pill row with right-fade hint */}
+            <div className="relative flex-1 min-w-0">
+              <div
+                ref={pillBarRef}
+                className="flex gap-2 overflow-x-auto pb-1"
+                style={{
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  maskImage: 'linear-gradient(to right, black 85%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)',
+                }}
+              >
+                {CATEGORIES.map(c => (
+                  <button
+                    key={c.value}
+                    ref={category === c.value ? activePillRef : null}
+                    onClick={() => setCategory(c.value)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                      category === c.value
+                        ? 'bg-blue-brand text-white border-blue-brand'
+                        : 'border-blue-brand/15 text-gray-500 bg-white'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Filter button */}
+            <button
+              onClick={() => setMobileFilters(true)}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-pill border border-blue-brand/15 text-gray-500 text-xs font-semibold bg-white hover:border-blue-brand hover:text-blue-brand transition-all"
+            >
+              <SlidersHorizontal size={13} />
+              Filters
+            </button>
+          </div>
+        </div>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
