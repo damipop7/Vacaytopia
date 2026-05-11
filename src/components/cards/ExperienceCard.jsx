@@ -102,6 +102,37 @@ function getCategoryFallbackUrl(category) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
+const GENERIC_TAGS = new Set([
+  'food', 'drink', 'food & drink', 'outdoors', 'outdoor', 'nightlife',
+  'sports', 'sport', 'arts', 'arts & culture', 'wellness', 'culture',
+  'kansas city', 'miami', 'new york city', 'orlando', 'las vegas',
+  'new orleans', 'austin', 'kc', 'restaurant', 'bar', 'cafe', 'park',
+  'free', 'paid', 'indoor', 'outdoor',
+])
+
+function toSentenceCase(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+function highlightScore(tag) {
+  const t = tag.trim().toLowerCase()
+  if (GENERIC_TAGS.has(t)) return -1
+  if (t.length < 5) return 0
+  // longer, more descriptive tags score higher
+  return t.length + (t.includes(' ') ? 5 : 0)
+}
+
+export function pickHighlights(tags, max = 3) {
+  if (!tags?.length) return { shown: [], overflow: 0 }
+  const scored = tags
+    .map(t => ({ tag: t, score: highlightScore(t) }))
+    .filter(t => t.score > 0)
+    .sort((a, b) => b.score - a.score)
+  const shown = scored.slice(0, max).map(t => toSentenceCase(t.tag))
+  const overflow = Math.max(0, scored.length - max)
+  return { shown, overflow }
+}
+
 // eslint-disable-next-line react-refresh/only-export-components -- shared utility exported for ExperiencePage
 export function getPriceTierLabel(tier) {
   return {
@@ -140,8 +171,10 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     id, title, city, category,
     price_per_person, price_tier,
     duration_label, rating, review_count,
-    image_url, image_gradient, is_sponsored, _score,
+    image_url, image_gradient, is_sponsored, _score, tags,
   } = experience
+
+  const { shown: highlights, overflow: highlightOverflow } = pickHighlights(tags)
 
   const saved         = isSaved(id)
   const gradient      = GRADIENTS[image_gradient] || GRADIENTS['ci-mia']
@@ -227,6 +260,21 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
           {rating > 0 && <><span>·</span><span className="flex items-center gap-0.5 text-gold-brand"><Star size={11} aria-hidden="true" fill="currentColor" />{rating}</span></>}
         </div>
+
+        {highlights.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {highlights.map(h => (
+              <span key={h} className="text-[11px] font-medium text-blue-brand bg-blue-tint border border-blue-brand/15 px-2 py-0.5 rounded-pill leading-tight">
+                {h}
+              </span>
+            ))}
+            {highlightOverflow > 0 && (
+              <span className="text-[11px] font-medium text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-pill leading-tight">
+                +{highlightOverflow} more
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
           <PriceTier tier={resolvedTier} />

@@ -16,6 +16,7 @@ const PrivacyPage      = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage        = lazy(() => import('./pages/TermsPage'))
 const InterestsPage    = lazy(() => import('./pages/InterestsPage'))
 const AdminPage        = lazy(() => import('./pages/AdminPage'))
+const AdminLinksPage   = lazy(() => import('./pages/AdminLinksPage'))
 const ItineraryQuiz    = lazy(() => import('./pages/ItineraryQuiz'))
 const ItineraryResults = lazy(() => import('./pages/ItineraryResults'))
 const ItineraryView    = lazy(() => import('./pages/ItineraryView'))
@@ -91,7 +92,8 @@ export default function App() {
               {/* ── Admin-only routes ── */}
               <Route element={<AdminRoute />}>
                 <Route element={<AppLayout />}>
-                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin"       element={<AdminPage />} />
+                  <Route path="/admin/links" element={<AdminLinksPage />} />
                 </Route>
               </Route>
 

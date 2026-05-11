@@ -5,7 +5,7 @@ import { useWishlist } from '../../hooks/useWishlist'
 import BrandMark from '../ui/BrandMark'
 import BottomNav from './BottomNav'
 import LanguageSelector from '../ui/LanguageSelector'
-import { Heart, Sparkles, Trophy, Sliders, Settings, LogOut, LayoutDashboard } from 'lucide-react'
+import { Heart, Sparkles, Trophy, Sliders, Settings, LogOut, LayoutDashboard, Menu, X } from 'lucide-react'
 
 export default function AppLayout() {
   const { user, profile, signOut } = useAuthStore()
@@ -13,8 +13,9 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen,   setMenuOpen]   = useState(false)
+  const [mobileNav,  setMobileNav]  = useState(false)
+  const [scrolled,   setScrolled]   = useState(false)
   const menuRef = useRef(null)
 
   const initials = profile
@@ -31,7 +32,7 @@ export default function AppLayout() {
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => { setMenuOpen(false); setMobileNav(false) }, [location.pathname])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -71,6 +72,15 @@ export default function AppLayout() {
             : 'bg-white border-b border-blue-brand/10'
         }`}
       >
+        {/* Hamburger — mobile only */}
+        <button
+          className="md:hidden p-2 rounded-[9px] text-gray-500 hover:text-blue-brand hover:bg-blue-tint transition-colors mr-1"
+          onClick={() => setMobileNav(o => !o)}
+          aria-label="Open navigation"
+        >
+          <Menu size={20} />
+        </button>
+
         <Link to="/" className="mr-4" aria-label="Vtopia home">
           <BrandMark className="text-2xl" />
         </Link>
@@ -166,6 +176,44 @@ export default function AppLayout() {
           )}
         </div>
       </nav>
+
+      {/* ── Mobile nav drawer ── */}
+      {mobileNav && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNav(false)} />
+          <div className="absolute top-0 left-0 bottom-0 w-72 bg-white flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-blue-brand/10">
+              <BrandMark className="text-xl" />
+              <button onClick={() => setMobileNav(false)} className="w-9 h-9 flex items-center justify-center rounded-full border border-blue-brand/15 text-gray-400">
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="flex flex-col p-4 gap-1 flex-1 overflow-y-auto">
+              {[
+                { to: '/browse',    label: 'Browse experiences' },
+                { to: '/itinerary', label: 'AI Itinerary' },
+                ...(import.meta.env.VITE_FEATURE_WORLD_CUP === 'true'
+                  ? [{ to: '/world-cup', label: 'World Cup KC' }]
+                  : []),
+                ...(user ? [{ to: '/interests', label: 'My interests' }] : []),
+                ...(user ? [{ to: '/profile',   label: 'Profile' }] : []),
+              ].map(({ to, label }) => (
+                <Link key={to} to={to}
+                  className="flex items-center min-h-[48px] px-4 rounded-[9px] text-sm font-semibold text-gray-600 hover:bg-blue-tint hover:text-blue-brand transition-all">
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            {!user && (
+              <div className="p-4 border-t border-blue-brand/10">
+                <button onClick={() => navigate('/auth')} className="btn-primary w-full">
+                  Sign in / Get started
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Page Content ── */}
       <main className="flex-1 pb-14 md:pb-0">

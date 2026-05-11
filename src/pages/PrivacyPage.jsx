@@ -31,7 +31,7 @@ const SECTIONS = [
   },
   {
     title: 'Contact',
-    body: `For any privacy questions or data requests, email privacy@vtopia.com. We aim to respond within 5 business days.`,
+    body: `For any privacy questions or data requests, email privacy@vtopia.world. We aim to respond within 5 business days.`,
   },
 ]
 
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
             Questions about this policy? We're here to help.
           </div>
           <a
-            href="mailto:privacy@vtopia.com"
+            href="mailto:privacy@vtopia.world"
             className="btn-primary text-sm inline-block"
           >
             Contact Privacy Team
