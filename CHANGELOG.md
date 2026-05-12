@@ -166,7 +166,7 @@
 | Item | Blocker | How to unblock |
 |------|---------|----------------|
 | ~~Migration 009 not applied to production~~ | ✅ Done 2026-05-12 | `link_status` column live in production |
-| Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
+| ~~Link validator never run~~ | ✅ Done 2026-05-12 | 1 verified, 0 broken, 199 unverified — all unverified have homepage URLs, not booking-specific paths |
 | `provider_email` empty in DB | Manual data entry per experience | Supabase dashboard → experiences table → fill `provider_email` per active KC experience |
 | Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
 | OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — currently referenced in `og:image` meta but file doesn't exist |
