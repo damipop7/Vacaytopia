@@ -192,6 +192,25 @@
 
 ---
 
+## 2026-05-12 — Sprint 9 · Experience Images & Admin Submissions (PR #9)
+
+### Experience images — 524/524 covered
+- **`scripts/fetchPlacePhotos.ts`** — fetches real venue photos from Google Places API (New) for all active KC experiences with a `google_place_id`; stores the permanent `photoUri` CDN URL in `image_url`; result: **434 real Google Places photos updated, 0 failures**
+- **`scripts/assignCategoryImages.ts`** — zero-cost fallback; assigns curated Unsplash photo pools per category (Food & Drink, Outdoors, Nightlife, Arts & Culture, Sports, Wellness) to the **90 remaining experiences** (no Google Place ID); rotates through 6–10 hand-picked photos per category
+- **`scripts/auditImages.ts`** — diagnostic script; writes `MISSING_IMAGES.md` listing every active KC experience by image status; confirmed 524 missing → 0 missing after scripts ran
+
+### Admin — Operator Submissions tab
+- **`AdminPage.jsx`** — new Submissions tab (📬) with pending-count badge; filter pills (All / Pending / Approved / Rejected); expandable detail panel showing all submission fields; inline approve/reject form with admin notes; calls `review-submission` edge function
+- **`supabase/functions/review-submission/index.ts`** — new edge function; verifies admin JWT + `profiles.role = 'admin'`; updates `operator_submissions` (status, admin_notes, reviewed_at); sends Resend notification email to operator (approval or rejection copy)
+
+### Summary table update
+| Category | Changes |
+|----------|---------|
+| Images | 434 real Google Places photos + 90 Unsplash category fallbacks = **524/524 KC experiences have images** |
+| Admin | Operator submissions review flow (tab + edge function + email notifications) |
+
+---
+
 ## Launch configuration — required env vars
 
 | Variable | Where set | Value / notes |
