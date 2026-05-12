@@ -9,7 +9,14 @@ const TABS = [
   { id: 'experiences',  label: 'Experiences',  icon: '🗺️' },
   { id: 'bookings',     label: 'Bookings',     icon: '📅' },
   { id: 'users',        label: 'Users',        icon: '👥' },
+  { id: 'submissions',  label: 'Submissions',  icon: '📬' },
 ]
+
+const SUBMISSION_STATUS_STYLES = {
+  pending:  'bg-amber-50 text-amber-700 border-amber-200',
+  approved: 'bg-green-50 text-green-700 border-green-200',
+  rejected: 'bg-red-50   text-red-600   border-red-200',
+}
 
 const CITIES = ['All Cities', 'New York City', 'Miami', 'Orlando', 'Las Vegas', 'New Orleans']
 const CATEGORIES = ['All', 'Food & Drink', 'Outdoors', 'Nightlife', 'Sports', 'Arts & Culture', 'Wellness']
@@ -672,6 +679,202 @@ function UsersTab() {
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+// ── TAB: Submissions ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+function SubmissionsTab({ onPendingCount }) {
+  const { session } = useAuthStore()
+  const [rows, setRows]         = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [filter, setFilter]     = useState('pending')
+  const [reviewing, setReviewing] = useState(null) // submission being actioned
+  const [notes, setNotes]       = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError]       = useState(null)
+  const [expanded, setExpanded] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    let q = supabase.from('operator_submissions').select('*').order('submitted_at', { ascending: false })
+    if (filter !== 'all') q = q.eq('status', filter)
+    const { data } = await q
+    setRows(data ?? [])
+    setLoading(false)
+  }, [filter])
+
+  useEffect(() => { load() }, [load])
+
+  // Surface pending count to parent for badge
+  useEffect(() => {
+    supabase
+      .from('operator_submissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => onPendingCount?.(count ?? 0))
+  }, [rows, onPendingCount])
+
+  async function decide(decision) {
+    if (!reviewing) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/review-submission`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            Authorization:   `Bearer ${session?.access_token}`,
+            apikey:          import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ submissionId: reviewing.id, decision, adminNotes: notes }),
+        }
+      )
+      if (!res.ok) throw new Error(await res.text())
+      setRows(r => r.map(x => x.id === reviewing.id ? { ...x, status: decision, admin_notes: notes } : x))
+      setReviewing(null)
+      setNotes('')
+      setExpanded(null)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const FILTERS = ['all', 'pending', 'approved', 'rejected']
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Filter pills */}
+      <div className="flex gap-1 flex-wrap">
+        {FILTERS.map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-pill text-xs font-semibold capitalize transition-colors ${
+              filter === f
+                ? 'bg-blue-brand text-white'
+                : 'bg-white border border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+        {loading ? <LoadingSpinner /> : rows.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 text-sm">No {filter !== 'all' ? filter : ''} submissions.</div>
+        ) : (
+          <div className="flex flex-col divide-y divide-blue-brand/5">
+            {rows.map(row => (
+              <div key={row.id} className="py-4">
+                {/* Summary row */}
+                <div className="flex items-start gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-[#0D1B3E] text-sm">{row.business_name}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${SUBMISSION_STATUS_STYLES[row.status]}`}>
+                        {row.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {row.title} · {row.category} · {row.price_per_person ? `$${row.price_per_person}/person` : 'Price TBD'}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {row.operator_name} · <a href={`mailto:${row.operator_email}`} className="text-blue-brand hover:underline">{row.operator_email}</a>
+                      {' · '}Submitted {fmtDate(row.submitted_at)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => setExpanded(expanded === row.id ? null : row.id)}
+                      className="text-xs text-gray-400 hover:text-blue-brand font-semibold"
+                    >
+                      {expanded === row.id ? 'Hide ▲' : 'Details ▼'}
+                    </button>
+                    {row.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => { setReviewing(row); setNotes('') }}
+                          className="text-xs bg-blue-brand text-white px-3 py-1.5 rounded-pill font-semibold hover:bg-blue-brand/90 transition-colors"
+                        >
+                          Review
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded detail panel */}
+                {expanded === row.id && (
+                  <div className="mt-3 p-4 bg-gray-50 rounded-[10px] text-sm grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <DetailField label="Description"   value={row.description} />
+                    <DetailField label="Duration"      value={row.duration_label} />
+                    <DetailField label="Max guests"    value={row.max_guests} />
+                    <DetailField label="Website"       value={row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-blue-brand hover:underline truncate block">{row.website}</a> : '—'} />
+                    <DetailField label="Booking URL"   value={row.booking_url ? <a href={row.booking_url} target="_blank" rel="noopener noreferrer" className="text-blue-brand hover:underline truncate block">{row.booking_url}</a> : '—'} />
+                    <DetailField label="Experience type" value={row.experience_type} />
+                    {row.admin_notes && <DetailField label="Admin notes" value={row.admin_notes} />}
+                    {row.reviewed_at && <DetailField label="Reviewed" value={fmtDate(row.reviewed_at)} />}
+                  </div>
+                )}
+
+                {/* Inline review form */}
+                {reviewing?.id === row.id && (
+                  <div className="mt-3 p-4 border border-blue-brand/15 rounded-[10px] flex flex-col gap-3">
+                    <p className="text-sm font-semibold text-[#0D1B3E]">Review: <span className="text-blue-brand">{row.title}</span></p>
+                    <textarea
+                      className="input-field resize-none text-sm"
+                      rows={3}
+                      placeholder="Admin notes (optional) — sent to the operator in the notification email…"
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                    />
+                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => decide('approved')}
+                        disabled={submitting}
+                        className="flex-1 py-2 rounded-[9px] bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        {submitting ? 'Sending…' : '✓ Approve & notify'}
+                      </button>
+                      <button
+                        onClick={() => decide('rejected')}
+                        disabled={submitting}
+                        className="flex-1 py-2 rounded-[9px] bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
+                      >
+                        {submitting ? 'Sending…' : '✕ Reject & notify'}
+                      </button>
+                      <button
+                        onClick={() => { setReviewing(null); setNotes(''); setError(null) }}
+                        className="px-4 py-2 rounded-[9px] border border-blue-brand/15 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DetailField({ label, value }) {
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
+      <div className="text-sm text-[#0D1B3E]">{value ?? '—'}</div>
+    </div>
+  )
+}
+
 // ── Shared micro-components ──────────────────────────────────────────
 function LoadingSpinner() {
   return (
@@ -701,6 +904,7 @@ export default function AdminPage() {
   const { profile, loading } = useAuthStore()
   const navigate = useNavigate()
   const [tab, setTab] = useState('overview')
+  const [pendingCount, setPendingCount] = useState(0)
 
   // Role guard — redirect non-admins
   useEffect(() => {
@@ -759,6 +963,11 @@ export default function AdminPage() {
           >
             <span>{t.icon}</span>
             {t.label}
+            {t.id === 'submissions' && pendingCount > 0 && (
+              <span className="ml-1 bg-amber-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                {pendingCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -768,6 +977,7 @@ export default function AdminPage() {
       {tab === 'experiences' && <ExperiencesTab />}
       {tab === 'bookings'    && <BookingsTab />}
       {tab === 'users'       && <UsersTab />}
+      {tab === 'submissions' && <SubmissionsTab onPendingCount={setPendingCount} />}
     </div>
   )
 }
