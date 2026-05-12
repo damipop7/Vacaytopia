@@ -171,7 +171,7 @@
 | ~~Migration 010 & 011 applied to production~~ | Needs SQL editor | Paste `010_provider_email.sql` then `011_requires_booking_integrity.sql` into Supabase SQL Editor |
 | ~~Favicon PNGs missing~~ | ✅ Done 2026-05-12 | `apple-touch-icon.png` (180×180) and `icon-512.png` (512×512) generated from `favicon.svg` via `scripts/generateAssets.ts` |
 | ~~OG image missing~~ | ✅ Done 2026-05-12 | `public/og-image.png` (1200×630) generated — dark branded background, logo, tagline, purple→blue accent |
-| FIFA match schedule | Needs API key or manual entry | Register at api-football.com or manually enter confirmed KC 2026 match dates in `WorldCupPage.jsx` |
+| ~~FIFA match schedule~~ | ✅ Done 2026-05-12 | All 6 KC matches hardcoded in `WorldCupPage.jsx` — 4 group stage + Round of 32 + Quarter-Final; knockout opponents update after group stage |
 | Plausible account | Needs account creation | Register `vtopia.world` at plausible.io/sites — script is already in `index.html` |
 | Post-WC cleanup | Time-based | After tournament ends: search `// TODO: re-enable post-World-Cup` in `src/` and revert all flagged code |
 
