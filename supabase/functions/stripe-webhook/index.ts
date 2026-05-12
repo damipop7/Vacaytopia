@@ -163,14 +163,15 @@ serve(async (req) => {
         }),
       }).catch(e => console.error('Guest email failed:', e))
 
-      // 2. Provider notification
-      if (providerEmail) {
+      // 2. Provider notification — fall back to ops inbox when no provider email is set
+      const notifyEmail = providerEmail || 'hello@vtopia.world'
+      if (notifyEmail) {
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             from: 'Vtopia Bookings <bookings@vtopia.world>',
-            to: providerEmail,
+            to: notifyEmail,
             subject: `New Vtopia Booking — ${expTitle} — ${booking.booking_date}`,
             html: `<h2>New booking via Vtopia</h2>
 <ul>

@@ -167,7 +167,7 @@
 |------|---------|----------------|
 | Migration 009 not applied to production | Needs Supabase CLI or SQL editor | `supabase db push` or paste `supabase/migrations/009_link_status.sql` into Supabase SQL editor |
 | Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
-| `provider_email` empty in DB | Manual data entry per experience | Supabase dashboard → experiences table → fill `provider_email` per active KC experience |
+| `provider_email` empty in DB | Partially mitigated 2026-05-12 | Webhook now falls back to `hello@vtopia.world` when no provider email is set — no booking silently drops. Run `npx tsx --env-file=.env scripts/exportMissingProviderEmails.ts > missing-emails.csv` to get the fill list. |
 | Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
 | OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — currently referenced in `og:image` meta but file doesn't exist |
 | FIFA match schedule | Needs API key or manual entry | Register at api-football.com or manually enter confirmed KC 2026 match dates in `WorldCupPage.jsx` |
