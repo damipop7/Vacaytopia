@@ -168,11 +168,11 @@
 | ~~Migration 009 applied to production~~ | ✅ Done 2026-05-12 | `link_status` column live |
 | ~~Link validator run~~ | ✅ Done 2026-05-12 | 1 verified, 0 broken, 199 unverified — homepage URLs expected |
 | ~~`provider_email` empty in DB~~ | ✅ Done 2026-05-12 | Migration 011 reset `requires_booking=false` for 588 unpartnered experiences; webhook falls back to `hello@vtopia.world` |
-| ~~Migration 010 & 011 applied to production~~ | Needs SQL editor | Paste `010_provider_email.sql` then `011_requires_booking_integrity.sql` into Supabase SQL Editor |
+| ~~Migration 010 & 011 applied to production~~ | ✅ Done 2026-05-12 | `provider_email` column live; 588 unpartnered experiences reset to `requires_booking=false` |
 | ~~Favicon PNGs missing~~ | ✅ Done 2026-05-12 | `apple-touch-icon.png` (180×180) and `icon-512.png` (512×512) generated from `favicon.svg` via `scripts/generateAssets.ts` |
 | ~~OG image missing~~ | ✅ Done 2026-05-12 | `public/og-image.png` (1200×630) generated — dark branded background, logo, tagline, purple→blue accent |
 | ~~FIFA match schedule~~ | ✅ Done 2026-05-12 | All 6 KC matches hardcoded in `WorldCupPage.jsx` — 4 group stage + Round of 32 + Quarter-Final; knockout opponents update after group stage |
-| Plausible account | Needs account creation | Register `vtopia.world` at plausible.io/sites — script is already in `index.html` |
+| ~~Plausible account~~ | ✅ Done 2026-05-12 | Live tracking script installed in `index.html`; trial runs until 2026-06-11; calendar reminder set |
 | Post-WC cleanup | Time-based | After tournament ends: search `// TODO: re-enable post-World-Cup` in `src/` and revert all flagged code |
 
 ---
