@@ -21,7 +21,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 const { data, error } = await supabase
   .from('experiences')
-  .select('id, title, category, website_url, provider_email')
+  .select('id, title, category, external_url, provider_email')
   .eq('is_active', true)
   .or('provider_email.is.null,provider_email.eq.')
   .order('title')
@@ -38,9 +38,9 @@ if (!data || data.length === 0) {
 
 const escape = (v: string | null) => `"${(v ?? '').replace(/"/g, '""')}"`
 
-console.log('id,title,category,website_url,provider_email')
+console.log('id,title,category,external_url,provider_email')
 for (const row of data) {
-  console.log([row.id, row.title, row.category, row.website_url, row.provider_email].map(escape).join(','))
+  console.log([row.id, row.title, row.category, row.external_url, row.provider_email].map(escape).join(','))
 }
 
 console.error(`\nExported ${data.length} active experience(s) missing provider_email.`)
