@@ -163,16 +163,32 @@
 
 ### Open — requires external action
 
-| Item | Blocker | How to unblock |
-|------|---------|----------------|
-| Migration 009 not applied to production | Needs Supabase CLI or SQL editor | `supabase db push` or paste `supabase/migrations/009_link_status.sql` into Supabase SQL editor |
-| Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
-| ~~`provider_email` empty in DB~~ | ✅ Done 2026-05-12 | Migration 011 resets `requires_booking=false` for all 588 unpartnered experiences — they remain browseable but don't generate Stripe charges. Webhook falls back to `hello@vtopia.world` for any that slip through. To onboard a real operator: set `provider_email` + flip `requires_booking=true` in the dashboard. |
+| Item | Status | Notes |
+|------|--------|-------|
+| ~~Migration 009 applied to production~~ | ✅ Done 2026-05-12 | `link_status` column live |
+| ~~Link validator run~~ | ✅ Done 2026-05-12 | 1 verified, 0 broken, 199 unverified — homepage URLs expected |
+| ~~`provider_email` empty in DB~~ | ✅ Done 2026-05-12 | Migration 011 reset `requires_booking=false` for 588 unpartnered experiences; webhook falls back to `hello@vtopia.world` |
+| ~~Migration 010 & 011 applied to production~~ | Needs SQL editor | Paste `010_provider_email.sql` then `011_requires_booking_integrity.sql` into Supabase SQL Editor |
 | Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
-| OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — currently referenced in `og:image` meta but file doesn't exist |
+| OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — referenced in `og:image` meta but file doesn't exist |
 | FIFA match schedule | Needs API key or manual entry | Register at api-football.com or manually enter confirmed KC 2026 match dates in `WorldCupPage.jsx` |
 | Plausible account | Needs account creation | Register `vtopia.world` at plausible.io/sites — script is already in `index.html` |
 | Post-WC cleanup | Time-based | After tournament ends: search `// TODO: re-enable post-World-Cup` in `src/` and revert all flagged code |
+
+---
+
+## 2026-05-12 — Sprint 8 · Operator Email & Booking Integrity (PR #8)
+
+### Booking integrity
+- **Migration 010** — `provider_email` column added to `experiences` table (`TEXT DEFAULT NULL`); was referenced by `stripe-webhook` but never existed in schema
+- **Migration 011** — `requires_booking` reset to `false` for all 588 active experiences with no `provider_email`; experiences without an onboarded operator remain discoverable but no longer generate Stripe PaymentIntents
+- **Operator onboarding flow** — to make an experience Vtopia-bookable: set `provider_email` in the dashboard, then flip `requires_booking = true`
+
+### Webhook resilience
+- `stripe-webhook` now falls back to `hello@vtopia.world` when `provider_email` is null — no booking notification is ever silently dropped
+
+### Tooling
+- **`scripts/exportMissingProviderEmails.ts`** — exports a CSV of bookable experiences missing `provider_email`; scoped to `requires_booking = true` only so discovery-only experiences are excluded
 
 ---
 
@@ -216,7 +232,7 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx
 | Itinerary | sessionStorage persistence, back-navigation |
 | Affiliate revenue | Booking.com, Viator, Uber, Lyft, OpenTable integrated |
 | Infrastructure | Branch protection, email forwarding, Resend domain, Places API (New) |
-| Operator | Self-listing page, link validator, admin dashboard |
+| Operator | Self-listing page, link validator, admin dashboard, provider email fallback, booking integrity migration |
 | i18n | English/Spanish/French/German/Portuguese scaffold, language selector |
 | Legal | Terms of Service, Privacy policy corrections |
 | Offline | Service worker, offline fallback page |
