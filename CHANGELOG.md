@@ -165,7 +165,7 @@
 
 | Item | Blocker | How to unblock |
 |------|---------|----------------|
-| Migration 009 not applied to production | Needs Supabase CLI or SQL editor | `supabase db push` or paste `supabase/migrations/009_link_status.sql` into Supabase SQL editor |
+| ~~Migration 009 not applied to production~~ | ✅ Done 2026-05-12 | `link_status` column live in production |
 | Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
 | `provider_email` empty in DB | Manual data entry per experience | Supabase dashboard → experiences table → fill `provider_email` per active KC experience |
 | Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
