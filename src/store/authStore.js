@@ -64,18 +64,13 @@ export const useAuthStore = create((set, get) => ({
     return data
   },
 
-  signInWithGoogle: async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+  signInWithIdToken: async (idToken) => {
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
-      options: {
-        redirectTo: getAuthCallbackUrl(),
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
+      token: idToken,
     })
     if (error) throw error
+    return data
   },
 
   // FIX: clear state first so UI updates immediately, then call Supabase
