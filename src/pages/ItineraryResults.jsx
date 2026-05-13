@@ -334,6 +334,8 @@ export default function ItineraryResults() {
   }, [answers]);
 
   async function generateItinerary() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55_000);
     try {
       setStatus("loading");
       const { data: { session } } = await supabase.auth.getSession()
@@ -348,6 +350,7 @@ export default function ItineraryResults() {
             apikey: SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({ answers }),
+          signal: controller.signal,
         }
       );
       if (!response.ok) {
@@ -382,8 +385,13 @@ export default function ItineraryResults() {
         if (saved?.id) setSavedItineraryId(saved.id);
       } catch { /* non-fatal: saved state unavailable */ }
     } catch (err) {
-      setErrorMsg(err.message || "Something went wrong.");
+      const timedOut = err.name === "AbortError";
+      setErrorMsg(timedOut
+        ? "This is taking longer than usual. Please try again — it usually works on the second attempt."
+        : err.message || "Something went wrong.");
       setStatus("error");
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
