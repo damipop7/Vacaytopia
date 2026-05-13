@@ -51,7 +51,10 @@ export default function AuthPage() {
   }
 
   const handleGoogle = async () => {
-    try { await signInWithGoogle() }
+    try {
+      if (from && from !== '/browse') sessionStorage.setItem('vtopia_oauth_from', from)
+      await signInWithGoogle()
+    }
     catch (err) { setError(err.message) }
   }
 

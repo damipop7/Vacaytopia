@@ -64,7 +64,7 @@ export function useBookings() {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['bookings', user?.id])
+      queryClient.invalidateQueries({ queryKey: ['bookings', user?.id] })
     },
   })
 

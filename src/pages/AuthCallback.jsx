@@ -16,7 +16,9 @@ function routeAfterAuth(session, navigate) {
     sessionStorage.setItem(ONBOARD_INTERESTS_KEY, '1')
     navigate('/interests', { replace: true })
   } else {
-    navigate('/browse', { replace: true })
+    const savedFrom = sessionStorage.getItem('vtopia_oauth_from')
+    sessionStorage.removeItem('vtopia_oauth_from')
+    navigate(savedFrom || '/browse', { replace: true })
   }
 }
 
