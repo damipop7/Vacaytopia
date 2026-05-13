@@ -163,16 +163,51 @@
 
 ### Open — requires external action
 
-| Item | Blocker | How to unblock |
-|------|---------|----------------|
-| Migration 009 not applied to production | Needs Supabase CLI or SQL editor | `supabase db push` or paste `supabase/migrations/009_link_status.sql` into Supabase SQL editor |
-| Link validator never run | Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env` and live DB | `npx tsx --env-file=.env scripts/validateLinks.ts` |
-| `provider_email` empty in DB | Manual data entry per experience | Supabase dashboard → experiences table → fill `provider_email` per active KC experience |
-| Favicon PNGs missing | Needs design export | Export `favicon.svg` at 180×180 → `apple-touch-icon.png` and 512×512 → `icon-512.png` into `public/` |
-| OG image missing | Needs design asset | Create `public/og-image.png` at 1200×630 — currently referenced in `og:image` meta but file doesn't exist |
-| FIFA match schedule | Needs API key or manual entry | Register at api-football.com or manually enter confirmed KC 2026 match dates in `WorldCupPage.jsx` |
-| Plausible account | Needs account creation | Register `vtopia.world` at plausible.io/sites — script is already in `index.html` |
+| Item | Status | Notes |
+|------|--------|-------|
+| ~~Migration 009 applied to production~~ | ✅ Done 2026-05-12 | `link_status` column live |
+| ~~Link validator run~~ | ✅ Done 2026-05-12 | 1 verified, 0 broken, 199 unverified — homepage URLs expected |
+| ~~`provider_email` empty in DB~~ | ✅ Done 2026-05-12 | Migration 011 reset `requires_booking=false` for 588 unpartnered experiences; webhook falls back to `hello@vtopia.world` |
+| ~~Migration 010 & 011 applied to production~~ | ✅ Done 2026-05-12 | `provider_email` column live; 588 unpartnered experiences reset to `requires_booking=false` |
+| ~~Favicon PNGs missing~~ | ✅ Done 2026-05-12 | `apple-touch-icon.png` (180×180) and `icon-512.png` (512×512) generated from `favicon.svg` via `scripts/generateAssets.ts` |
+| ~~OG image missing~~ | ✅ Done 2026-05-12 | `public/og-image.png` (1200×630) generated — dark branded background, logo, tagline, purple→blue accent |
+| ~~FIFA match schedule~~ | ✅ Done 2026-05-12 | All 6 KC matches hardcoded in `WorldCupPage.jsx` — 4 group stage + Round of 32 + Quarter-Final; knockout opponents update after group stage |
+| ~~Plausible account~~ | ✅ Done 2026-05-12 | Live tracking script installed in `index.html`; trial runs until 2026-06-11; calendar reminder set |
 | Post-WC cleanup | Time-based | After tournament ends: search `// TODO: re-enable post-World-Cup` in `src/` and revert all flagged code |
+
+---
+
+## 2026-05-12 — Sprint 8 · Operator Email & Booking Integrity (PR #8)
+
+### Booking integrity
+- **Migration 010** — `provider_email` column added to `experiences` table (`TEXT DEFAULT NULL`); was referenced by `stripe-webhook` but never existed in schema
+- **Migration 011** — `requires_booking` reset to `false` for all 588 active experiences with no `provider_email`; experiences without an onboarded operator remain discoverable but no longer generate Stripe PaymentIntents
+- **Operator onboarding flow** — to make an experience Vtopia-bookable: set `provider_email` in the dashboard, then flip `requires_booking = true`
+
+### Webhook resilience
+- `stripe-webhook` now falls back to `hello@vtopia.world` when `provider_email` is null — no booking notification is ever silently dropped
+
+### Tooling
+- **`scripts/exportMissingProviderEmails.ts`** — exports a CSV of bookable experiences missing `provider_email`; scoped to `requires_booking = true` only so discovery-only experiences are excluded
+
+---
+
+## 2026-05-12 — Sprint 9 · Experience Images & Admin Submissions (PR #9)
+
+### Experience images — 524/524 covered
+- **`scripts/fetchPlacePhotos.ts`** — fetches real venue photos from Google Places API (New) for all active KC experiences with a `google_place_id`; stores the permanent `photoUri` CDN URL in `image_url`; result: **434 real Google Places photos updated, 0 failures**
+- **`scripts/assignCategoryImages.ts`** — zero-cost fallback; assigns curated Unsplash photo pools per category (Food & Drink, Outdoors, Nightlife, Arts & Culture, Sports, Wellness) to the **90 remaining experiences** (no Google Place ID); rotates through 6–10 hand-picked photos per category
+- **`scripts/auditImages.ts`** — diagnostic script; writes `MISSING_IMAGES.md` listing every active KC experience by image status; confirmed 524 missing → 0 missing after scripts ran
+
+### Admin — Operator Submissions tab
+- **`AdminPage.jsx`** — new Submissions tab (📬) with pending-count badge; filter pills (All / Pending / Approved / Rejected); expandable detail panel showing all submission fields; inline approve/reject form with admin notes; calls `review-submission` edge function
+- **`supabase/functions/review-submission/index.ts`** — new edge function; verifies admin JWT + `profiles.role = 'admin'`; updates `operator_submissions` (status, admin_notes, reviewed_at); sends Resend notification email to operator (approval or rejection copy)
+
+### Summary table update
+| Category | Changes |
+|----------|---------|
+| Images | 434 real Google Places photos + 90 Unsplash category fallbacks = **524/524 KC experiences have images** |
+| Admin | Operator submissions review flow (tab + edge function + email notifications) |
 
 ---
 
@@ -216,7 +251,7 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx
 | Itinerary | sessionStorage persistence, back-navigation |
 | Affiliate revenue | Booking.com, Viator, Uber, Lyft, OpenTable integrated |
 | Infrastructure | Branch protection, email forwarding, Resend domain, Places API (New) |
-| Operator | Self-listing page, link validator, admin dashboard |
+| Operator | Self-listing page, link validator, admin dashboard, provider email fallback, booking integrity migration |
 | i18n | English/Spanish/French/German/Portuguese scaffold, language selector |
 | Legal | Terms of Service, Privacy policy corrections |
 | Offline | Service worker, offline fallback page |

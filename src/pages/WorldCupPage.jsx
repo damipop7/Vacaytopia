@@ -73,9 +73,12 @@ const GETTING_AROUND = [
 ]
 
 const MATCH_SCHEDULE_STUB = [
-  { date: 'TBD', teams: 'Group Stage Match', venue: 'GEHA Field at Arrowhead Stadium', note: 'Official FIFA schedule to be confirmed' },
-  { date: 'TBD', teams: 'Group Stage Match', venue: 'GEHA Field at Arrowhead Stadium', note: 'Official FIFA schedule to be confirmed' },
-  { date: 'TBD', teams: 'Round of 32',       venue: 'GEHA Field at Arrowhead Stadium', note: 'Official FIFA schedule to be confirmed' },
+  { date: 'Tue 16 Jun · 8:00 PM CT', teams: 'Argentina vs Algeria',   venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 19' },
+  { date: 'Sat 20 Jun · 7:00 PM CT', teams: 'Ecuador vs Curaçao',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group E — Match 34' },
+  { date: 'Thu 25 Jun · 6:00 PM CT', teams: 'Tunisia vs Netherlands', venue: 'GEHA Field at Arrowhead Stadium', note: 'Group F — Match 58' },
+  { date: 'Sat 27 Jun · 9:00 PM CT', teams: 'Algeria vs Austria',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 69' },
+  { date: 'Fri  3 Jul · 8:30 PM CT', teams: 'Round of 32',            venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 87 — teams TBD after group stage' },
+  { date: 'Sat 11 Jul · 8:00 PM CT', teams: 'Quarter-Final',          venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 100 — teams TBD after Round of 32' },
 ]
 
 const SHARE_LANGUAGES = [
@@ -162,9 +165,8 @@ function MatchSchedule() {
         </div>
       ))}
       <p className="text-white/30 text-xs text-center pt-2">
-        Match schedule will update when FIFA confirms fixtures. Check{' '}
-        <a href="https://www.fifa.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 underline">fifa.com</a>{' '}
-        for official announcements.
+        All times Central. Knockout round opponents confirmed after the group stage.{' '}
+        <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:text-amber-300 underline">Full schedule at fifa.com</a>
       </p>
     </div>
   )

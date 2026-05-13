@@ -141,7 +141,11 @@ export default function ItineraryQuiz() {
     if (step < STEPS.length - 1) {
       // Derive traveler from travelerGroup when leaving that step
       if (currentStep === "travelerGroup" && answers.travelerGroup) {
-        setAnswers((p) => ({ ...p, traveler: GROUP_TO_TRAVELER[p.travelerGroup] ?? "solo" }));
+        setAnswers((p) => ({
+          ...p,
+          traveler: GROUP_TO_TRAVELER[p.travelerGroup] ?? "solo",
+          ...(p.travelerGroup === "solo" ? { groupSize: 1 } : {}),
+        }));
       }
       setStep((s) => s + 1);
     } else {
