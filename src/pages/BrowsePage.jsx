@@ -161,23 +161,27 @@ export default function BrowsePage() {
           <div className="flex flex-col gap-1">
             {CITIES.map(c => {
               const isLive = c.value === 'all' || LIVE_CITIES.has(c.value)
+              const isSelected = city === c.value
               return (
                 <button
                   key={c.value}
                   onClick={() => setCity(c.value)}
-                  className={`flex items-center justify-between gap-2 px-3 py-2 rounded-[9px] text-sm font-medium text-left transition-all ${
-                    city === c.value
-                      ? 'bg-blue-brand text-white'
-                      : 'text-gray-500 hover:bg-blue-tint hover:text-blue-brand border border-blue-brand/10'
+                  className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-[9px] text-sm font-medium text-left transition-all ${
+                    isSelected
+                      ? 'bg-blue-brand text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-blue-tint hover:text-blue-brand border border-transparent hover:border-blue-brand/15'
                   }`}
                 >
-                  <span>{c.label}</span>
+                  <span className="flex-1">{c.label}</span>
                   {!isLive && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                      city === c.value ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                      isSelected ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
                     }`}>
                       Soon
                     </span>
+                  )}
+                  {isSelected && (
+                    <span className="text-white text-xs font-bold flex-shrink-0">✓</span>
                   )}
                 </button>
               )
@@ -254,6 +258,35 @@ export default function BrowsePage() {
                 <X size={16} />
               </button>
             </div>
+
+            {/* Destination — mobile filter (bug fix: was missing entirely) */}
+            <div className="mb-5">
+              <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Destination</div>
+              <div className="flex flex-wrap gap-2">
+                {CITIES.map(c => {
+                  const isLive = c.value === 'all' || LIVE_CITIES.has(c.value)
+                  return (
+                    <button
+                      key={c.value}
+                      onClick={() => { setCity(c.value); setMobileFilters(false) }}
+                      className={`min-h-[44px] px-4 py-2 rounded-[9px] text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        city === c.value ? 'bg-blue-brand text-white' : 'border border-blue-brand/15 text-gray-500'
+                      }`}
+                    >
+                      {c.label}
+                      {!isLive && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                          city === c.value ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          Soon
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="mb-5">
               <div className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">Category</div>
               <div className="flex flex-wrap gap-2">
@@ -337,6 +370,28 @@ export default function BrowsePage() {
               Filters
             </button>
           </div>
+
+          {/* Mobile city pill — shows selected city with clear button */}
+          {city !== 'all' && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="flex items-center gap-1.5 bg-blue-tint border border-blue-brand/20 text-blue-brand text-xs font-semibold px-3 py-1.5 rounded-pill">
+                {CITIES.find(c2 => c2.value === city)?.label || city}
+                <button
+                  type="button"
+                  aria-label="Clear city filter"
+                  onClick={() => setCity('all')}
+                  className="ml-0.5 text-blue-brand/60 hover:text-blue-brand transition-colors leading-none"
+                >
+                  ×
+                </button>
+              </span>
+              {!isLoading && (
+                <span className="text-xs text-gray-400 font-medium">
+                  {filtered.length} experience{filtered.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Header */}
@@ -393,7 +448,7 @@ export default function BrowsePage() {
                 placeholder="Search experiences..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="input-field text-sm w-48 sm:w-56"
+                className="input-field text-sm w-full md:w-56"
                 aria-label="Search experiences"
               />
             </div>
