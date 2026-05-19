@@ -8,6 +8,12 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, sentry-trace, baggage",
+};
+
 const BUDGET_HOTEL_TIER: Record<string, string> = {
   budget: "budget-friendly hostels and guesthouses",
   mid: "3-4 star hotels and boutique stays",
@@ -124,13 +130,7 @@ Keep all descriptions to 1-2 sentences max. Respond ONLY with this JSON structur
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, sentry-trace, baggage",
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
@@ -141,13 +141,27 @@ serve(async (req) => {
     if (!ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "Server configuration error" }), {
         status: 500,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    }
+
+    // Require a real user JWT — rejects the anon key and unauthenticated requests
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Sign in to generate an itinerary" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     }
 
     const { answers } = await req.json();
     if (!answers) {
-      return new Response(JSON.stringify({ error: "Missing answers" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Missing answers" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
     }
 
     // Fetch real experiences for the city so Claude uses accurate prices and IDs
@@ -178,6 +192,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 4096,
+        stream: true,
         system: "You are a travel concierge. Respond ONLY with valid JSON. No markdown, no explanation.",
         messages: [{ role: "user", content: buildPrompt(answers, experiences) }],
       }),
@@ -188,25 +203,45 @@ serve(async (req) => {
       throw new Error(err?.error?.message || `Anthropic error ${anthropicRes.status}`);
     }
 
-    const data = await anthropicRes.json();
-    const text = data.content?.[0]?.text || "";
-    const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-    const itinerary = JSON.parse(cleaned);
+    // Transform Anthropic's SSE stream into a plain text stream of just the JSON content.
+    // Each SSE event with type=content_block_delta contributes one text delta; we strip the
+    // SSE framing so the client receives raw JSON characters as they arrive.
+    let sseBuffer = "";
+    const transformer = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        sseBuffer += new TextDecoder().decode(chunk);
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? ""; // keep incomplete last line for next chunk
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const event = JSON.parse(data);
+            if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+              controller.enqueue(new TextEncoder().encode(event.delta.text));
+            }
+          } catch { /* ignore malformed SSE lines */ }
+        }
+      },
+    });
 
-    return new Response(JSON.stringify({ itinerary }), {
+    anthropicRes.body!.pipeTo(transformer.writable).catch(() => {
+      // Stream aborted by client or network error — nothing to do
+    });
+
+    return new Response(transformer.readable, {
       headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        ...CORS_HEADERS,
       },
     });
   } catch (err) {
     console.error("generate-itinerary error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: { "Content-Type": "application/json", ...CORS_HEADERS },
     });
   }
 });
