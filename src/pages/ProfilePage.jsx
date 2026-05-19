@@ -6,9 +6,98 @@ import { labelInterests, labelStyle, labelGroups } from '../lib/travelQuiz'
 import { useWishlist } from '../hooks/useWishlist'
 import { useBookings } from '../hooks/useBookings'
 import ExperienceCard from '../components/cards/ExperienceCard'
+import { supabase } from '../lib/supabase'
 
 const TABS = ['wishlist','history','preferences','settings']
+
+// Icons for each tab (used on all sizes)
+const TAB_ICONS  = { wishlist:'❤', history:'📅', preferences:'⚙', settings:'🔒' }
+// Short labels shown at sm+ alongside icon
+const TAB_SHORT  = { wishlist:'Saved', history:'Trips', preferences:'Prefs', settings:'Account' }
+// Long labels shown at md+ (hidden below md)
 const TAB_LABELS = { wishlist:'❤ Saved', history:'📅 Trip History', preferences:'⚙ Preferences', settings:'🔒 Account' }
+
+// ── StarRating — interactive 1-5 star picker ────────────────────────────────
+function StarRating({ value, onChange }) {
+  const [hovered, setHovered] = useState(0)
+  return (
+    <div className="flex gap-1" role="group" aria-label="Star rating">
+      {[1,2,3,4,5].map(star => {
+        const filled = star <= (hovered || value)
+        return (
+          <button
+            key={star}
+            type="button"
+            aria-label={`${star} star${star !== 1 ? 's' : ''}`}
+            onMouseEnter={() => setHovered(star)}
+            onMouseLeave={() => setHovered(0)}
+            onClick={() => onChange(star)}
+            className="text-2xl leading-none transition-transform hover:scale-110 focus:outline-none"
+            style={{ color: filled ? '#F5A623' : '#D1D5DB' }}
+          >
+            ★
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── InlineReviewForm — expands beneath a completed booking row ───────────────
+function InlineReviewForm({ booking, userId, onSuccess }) {
+  const [rating, setRating]   = useState(0)
+  const [body, setBody]       = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+
+  const handleSubmit = async () => {
+    if (rating < 1 || rating > 5) return setError('Please select a star rating.')
+    setError('')
+    setLoading(true)
+    try {
+      const { error: dbErr } = await supabase
+        .from('reviews')
+        .insert({
+          booking_id:    booking.id,
+          user_id:       userId,
+          experience_id: booking.experience_id,
+          rating,
+          body,
+        })
+      if (dbErr) throw dbErr
+      onSuccess()
+    } catch (e) {
+      setError(e.message || 'Could not submit review. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 ml-11 p-4 bg-blue-tint rounded-[9px] border border-blue-brand/15">
+      <div className="text-xs font-bold text-blue-brand mb-3 uppercase tracking-wide">Leave a Review</div>
+      <StarRating value={rating} onChange={setRating} />
+      <textarea
+        value={body}
+        onChange={e => setBody(e.target.value)}
+        placeholder="Share your experience..."
+        rows={3}
+        className="input-field text-sm mt-3 resize-none"
+      />
+      {error && (
+        <div className="text-red-600 text-xs mt-2">{error}</div>
+      )}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={loading}
+        className="btn-primary text-xs px-4 py-2 mt-3 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {loading ? 'Submitting...' : 'Submit Review'}
+      </button>
+    </div>
+  )
+}
 
 export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
   const location = useLocation()
@@ -23,6 +112,13 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
     'Personalised recommendations': true,
     'Activity tracking': true,
   })
+  // Review state: map of booking.id → { open: bool, submitted: bool, msg: string }
+  const [reviewStates, setReviewStates] = useState({})
+  // Set of booking IDs already reviewed (fetched on load)
+  const [reviewedBookingIds, setReviewedBookingIds] = useState(new Set())
+  // Actual review count for the stats
+  const [reviewCount, setReviewCount] = useState(0)
+
   const { user, profile, updateProfile, signOut } = useAuthStore()
   const { wishlist, savedIds, isLoading: wlLoading } = useWishlist()
   const { bookings, isLoading: bkLoading } = useBookings()
@@ -35,6 +131,20 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
       setTab(location.state.tab)
     }
   }, [location.state])
+
+  // Load existing reviews for this user to pre-populate reviewed state + count
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('reviews')
+      .select('id, booking_id')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (!data) return
+        setReviewCount(data.length)
+        setReviewedBookingIds(new Set(data.map(r => r.booking_id).filter(Boolean)))
+      })
+  }, [user?.id])
 
   const initials = profile ? `${profile.first_name?.[0]??''}${profile.last_name?.[0]??''}`.toUpperCase() : '?'
 
@@ -98,8 +208,8 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-0 mt-4 pt-4 border-t border-blue-brand/8">
-              {[['Saved', savedIds.length],['Booked', bookings.filter(b=>b.status==='confirmed'||b.status==='completed').length],['Cities', new Set(bookings.map(b=>b.experiences?.city)).size],['Reviews', 0]].map(([l,v]) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mt-4 pt-4 border-t border-blue-brand/8">
+              {[['Saved', savedIds.length],['Booked', bookings.filter(b=>b.status==='confirmed'||b.status==='completed').length],['Cities', new Set(bookings.map(b=>b.experiences?.city)).size],['Reviews', reviewCount]].map(([l,v]) => (
                 <div key={l} className="text-center border-r border-blue-brand/8 last:border-0 py-2">
                   <div className="font-display font-black text-xl text-blue-brand">{v}</div>
                   <div className="text-[11px] text-gray-400 font-medium">{l}</div>
@@ -109,12 +219,13 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — icons only below sm, icon+short label at sm, full label at md+ */}
         <div className="flex gap-0 bg-white rounded-card border border-blue-brand/10 p-1 mb-5">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 rounded-[9px] text-xs font-semibold transition-all ${tab===t ? 'bg-blue-brand text-white' : 'text-gray-400 hover:text-blue-brand'}`}>
-              {TAB_LABELS[t]}
+              className={`flex-1 py-2.5 rounded-[9px] text-xs font-semibold transition-all flex items-center justify-center gap-1 ${tab===t ? 'bg-blue-brand text-white' : 'text-gray-400 hover:text-blue-brand'}`}>
+              <span>{TAB_ICONS[t]}</span>
+              <span className="hidden sm:inline">{TAB_SHORT[t]}</span>
             </button>
           ))}
         </div>
@@ -153,28 +264,63 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
               <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-16 bg-blue-tint rounded-card animate-pulse"/>)}</div>
             ) : bookings.length > 0 ? (
               <div className="flex flex-col gap-3">
-                {bookings.map(b => (
-                  <div key={b.id} className="p-4 bg-gray-50 rounded-[9px] border border-blue-brand/8 hover:border-blue-brand/20 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">{b.experiences?.image_emoji || '🌍'}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-[#0D1B3E] truncate">{b.experiences?.title}</div>
-                        <div className="text-xs text-gray-400">{b.experiences?.city} · {new Date(b.booking_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                {bookings.map(b => {
+                  const rs = reviewStates[b.id] || {}
+                  const alreadyReviewed = reviewedBookingIds.has(b.id) || rs.submitted
+                  return (
+                    <div key={b.id} className="p-4 bg-gray-50 rounded-[9px] border border-blue-brand/8 hover:border-blue-brand/20 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">{b.experiences?.image_emoji || '🌍'}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm text-[#0D1B3E] truncate">{b.experiences?.title}</div>
+                          <div className="text-xs text-gray-400">{b.experiences?.city} · {new Date(b.booking_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-sm text-blue-brand">${b.total_amount?.toFixed(2)}</div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[b.status] || 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
+                        </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="font-bold text-sm text-blue-brand">${b.total_amount?.toFixed(2)}</div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[b.status] || 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
+                      <div className="mt-2 pl-11 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-400">
+                        <span className="font-semibold text-[#10b981]">● Paid</span>
+                        <span aria-hidden>—</span>
+                        <span className={b.status !== 'pending' ? 'font-semibold text-[#10b981]' : ''}>● Confirmed</span>
+                        <span aria-hidden>—</span>
+                        <span className={b.status === 'completed' ? 'font-semibold text-[#10b981]' : ''}>● Completed</span>
                       </div>
+
+                      {/* Review section — only for completed bookings */}
+                      {b.status === 'completed' && (
+                        <div className="mt-3 pl-11">
+                          {alreadyReviewed ? (
+                            rs.submitted ? (
+                              <div className="text-xs font-semibold text-[#10b981]">✓ Review submitted — thanks!</div>
+                            ) : (
+                              <span className="text-xs font-semibold text-gray-400">Reviewed ✓</span>
+                            )
+                          ) : rs.open ? (
+                            <InlineReviewForm
+                              booking={b}
+                              userId={user?.id}
+                              onSuccess={() => {
+                                setReviewStates(prev => ({ ...prev, [b.id]: { submitted: true, open: false } }))
+                                setReviewCount(c => c + 1)
+                                setReviewedBookingIds(prev => new Set([...prev, b.id]))
+                              }}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReviewStates(prev => ({ ...prev, [b.id]: { open: true } }))}
+                              className="text-xs font-semibold text-blue-brand border border-blue-brand/20 rounded-pill px-3 py-1.5 hover:bg-blue-tint transition-colors"
+                            >
+                              Leave a Review
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-2 pl-11 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-400">
-                      <span className="font-semibold text-[#10b981]">● Paid</span>
-                      <span aria-hidden>—</span>
-                      <span className={b.status !== 'pending' ? 'font-semibold text-[#10b981]' : ''}>● Confirmed</span>
-                      <span aria-hidden>—</span>
-                      <span className={b.status === 'completed' ? 'font-semibold text-[#10b981]' : ''}>● Completed</span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-12">

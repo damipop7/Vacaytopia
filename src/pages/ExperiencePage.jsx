@@ -514,42 +514,68 @@ function ExperiencePageInner({ id }) {
         </div>
       )}
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-brand mb-6 transition-colors">
-          ← Back
-        </button>
-
         <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
           {/* ── Left column ── */}
           <div>
             {/* Hero */}
-            <div className={`h-64 md:h-80 rounded-card bg-gradient-to-br ${grad} overflow-hidden mb-6 relative`}>
-              {exp.image_url ? (
+            {exp.image_url ? (
+              /* Full-bleed image hero with gradient overlay */
+              <div className="h-56 md:h-72 rounded-card overflow-hidden mb-6 relative">
+                {window.history.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    aria-label="Go back"
+                    className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white flex items-center justify-center shadow-sm transition-all"
+                  >
+                    ←
+                  </button>
+                )}
                 <img
                   src={exp.image_url}
                   alt={`${exp.title} in ${exp.city}`}
                   width={800}
-                  height={320}
+                  height={288}
                   loading="eager"
                   decoding="async"
                   className="w-full h-full object-cover"
                   onError={e => { e.target.style.display = 'none' }}
                 />
-              ) : (
+                {/* Gradient overlay for text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                {exp.is_featured && (
+                  <div className="absolute top-4 right-4 bg-gold-brand text-white text-xs font-bold px-3 py-1 rounded-full">Featured</div>
+                )}
+              </div>
+            ) : (
+              /* Emoji/gradient fallback hero */
+              <div className={`h-56 md:h-72 rounded-card bg-gradient-to-br ${grad} overflow-hidden mb-6 relative`}>
+                {window.history.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    aria-label="Go back"
+                    className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 hover:bg-white flex items-center justify-center shadow-sm transition-all"
+                  >
+                    ←
+                  </button>
+                )}
                 <img
                   src={getPhotoUrl(exp.category, exp.city)}
                   alt={`${exp.category} experience in ${exp.city}`}
                   width={800}
-                  height={320}
+                  height={288}
                   loading="eager"
                   decoding="async"
                   className="w-full h-full object-cover"
                   onError={e => { e.target.style.display = 'none' }}
                 />
-              )}
-              {exp.is_featured && (
-                <div className="absolute top-4 left-4 bg-gold-brand text-white text-xs font-bold px-3 py-1 rounded-full">Featured</div>
-              )}
-            </div>
+                {exp.is_featured && (
+                  <div className="absolute top-4 right-4 bg-gold-brand text-white text-xs font-bold px-3 py-1 rounded-full">Featured</div>
+                )}
+              </div>
+            )}
+
 
             {/* Title & meta */}
             <div className="mb-6">
@@ -716,25 +742,52 @@ function ExperiencePageInner({ id }) {
             {/* Reviews */}
             {exp.reviews?.length > 0 && (
               <div className="bg-white rounded-card border border-blue-brand/10 p-6">
-                <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-4">
+                <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-5">
                   Reviews <span className="text-gray-400 font-normal text-sm">({exp.reviews.length})</span>
                 </h2>
-                <div className="flex flex-col gap-4">
-                  {exp.reviews.slice(0, 3).map(r => (
-                    <div key={r.id} className="pb-4 border-b border-blue-brand/8 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-tint text-blue-brand text-xs font-bold flex items-center justify-center">
-                          {r.profiles?.first_name?.[0]}{r.profiles?.last_name?.[0]}
+                <div className="flex flex-col">
+                  {exp.reviews.slice(0, 3).map((r, idx) => {
+                    const initials = [r.profiles?.first_name?.[0], r.profiles?.last_name?.[0]].filter(Boolean).join('')
+                    const authorName = [r.profiles?.first_name, r.profiles?.last_name?.[0] ? `${r.profiles.last_name[0]}.` : ''].filter(Boolean).join(' ')
+                    return (
+                      <div key={r.id} className={`py-5 ${idx < exp.reviews.slice(0,3).length - 1 ? 'border-b border-blue-brand/8' : ''}`}>
+                        <div className="flex items-start gap-3 mb-3">
+                          {/* Initials avatar */}
+                          <div className="w-9 h-9 rounded-full bg-blue-brand text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                            {initials || '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="font-semibold text-sm text-[#0D1B3E]">{authorName || 'Guest'}</div>
+                              <div className="flex items-center gap-2">
+                                {r.source === 'google' && (
+                                  <span className="text-[10px] font-bold bg-blue-tint text-blue-brand border border-blue-brand/15 px-2 py-0.5 rounded-full">Google</span>
+                                )}
+                                <span className="text-xs text-gray-300">
+                                  {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Star display */}
+                            <div className="flex gap-0.5 mt-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <span
+                                  key={i}
+                                  className="text-sm"
+                                  style={{ color: i < r.rating ? '#F5A623' : '#E5E7EB' }}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-semibold text-sm">{r.profiles?.first_name} {r.profiles?.last_name?.[0]}.</div>
-                          <div className="flex gap-0.5">{Array.from({length:5}).map((_,i) => <span key={i} className={`text-xs ${i < r.rating ? 'text-gold-brand' : 'text-gray-200'}`}>★</span>)}</div>
-                        </div>
-                        <div className="ml-auto text-xs text-gray-300">{new Date(r.created_at).toLocaleDateString('en-US',{month:'short',year:'numeric'})}</div>
+                        {r.body && (
+                          <p className="text-sm text-gray-500 leading-relaxed pl-12">{r.body}</p>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-500 leading-relaxed">{r.body}</p>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}

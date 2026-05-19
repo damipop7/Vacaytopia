@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { ONBOARD_INTERESTS_KEY } from '../lib/appUrl'
-import BrandMark from '../components/ui/BrandMark'
+import VtopiaLogo from '../components/ui/VtopiaLogo'
 
 export default function AuthPage() {
   const [tab,       setTab]       = useState('signup')
@@ -111,28 +111,26 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-blue-50 via-white to-amber-50/30">
       <div className="w-full max-w-md">
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-3xl">
-            <BrandMark />
+        <div className="bg-white rounded-card border border-blue-brand/10 p-6 md:p-10 shadow-[0_4px_24px_-4px_rgba(3,70,148,0.10)]">
+
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-7">
+            <VtopiaLogo size="lg" variant="dark" />
+            <div className="text-gray-400 text-sm mt-2">Your next great experience is one step away</div>
           </div>
-          <div className="text-gray-400 text-sm mt-1">Your next great experience is one step away</div>
-        </div>
 
-        <div className="bg-white rounded-card border border-blue-brand/10 p-8 shadow-sm">
-
-          {/* Tabs */}
-          <div className="flex bg-gray-50 rounded-[9px] p-1 mb-6">
+          {/* Tabs — pill-shaped */}
+          <div className="flex bg-gray-50 rounded-full p-1 mb-6 border border-blue-brand/8">
             {['signup','login'].map(t => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setError('') }}
-                className={`flex-1 py-2 rounded-[7px] text-sm font-semibold transition-all ${
+                className={`flex-1 py-2.5 rounded-full text-sm font-semibold transition-all ${
                   tab === t
-                    ? 'bg-white text-blue-brand shadow-sm'
+                    ? 'bg-white text-blue-brand shadow-sm border border-blue-brand/10'
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -142,9 +140,9 @@ export default function AuthPage() {
           </div>
 
           {/* Google Sign-In — rendered by Google Identity Services (shows vtopia.world in account picker) */}
-          <div ref={googleBtnRef} className="flex justify-center mb-3 min-h-[44px]" />
+          <div ref={googleBtnRef} className="flex justify-center mb-4 min-h-[44px]" />
 
-          <div className="flex items-center gap-3 my-4 text-xs text-gray-300">
+          <div className="flex items-center gap-3 my-5 text-xs text-gray-300">
             <div className="flex-1 h-px bg-gray-100" />
             {tab === 'signup' ? 'or sign up with email' : 'or sign in with email'}
             <div className="flex-1 h-px bg-gray-100" />
@@ -215,3 +213,4 @@ export default function AuthPage() {
     </div>
   )
 }
+

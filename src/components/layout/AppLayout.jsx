@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useWishlist } from '../../hooks/useWishlist'
 import BrandMark from '../ui/BrandMark'
+import VtopiaLogo from '../ui/VtopiaLogo'
 import BottomNav from './BottomNav'
 import LanguageSelector from '../ui/LanguageSelector'
 import { Heart, Sparkles, Trophy, Sliders, Settings, LogOut, LayoutDashboard, Menu, X } from 'lucide-react'
@@ -82,7 +83,7 @@ export default function AppLayout() {
         </button>
 
         <Link to="/" className="mr-4" aria-label="Vtopia home">
-          <BrandMark className="text-2xl" />
+          <VtopiaLogo size="md" variant="dark" />
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
@@ -183,7 +184,7 @@ export default function AppLayout() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNav(false)} />
           <div className="absolute top-0 left-0 bottom-0 w-72 bg-white flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-blue-brand/10">
-              <BrandMark className="text-xl" />
+              <VtopiaLogo size="sm" variant="dark" />
               <button onClick={() => setMobileNav(false)} className="w-9 h-9 flex items-center justify-center rounded-full border border-blue-brand/15 text-gray-400">
                 <X size={18} />
               </button>
@@ -222,7 +223,7 @@ export default function AppLayout() {
 
       {/* ── Footer ── */}
       <footer className="bg-[#0D1B3E] text-white/60 text-xs py-6 px-6 flex flex-wrap items-center justify-between gap-3 mt-auto">
-        <BrandMark variant="light" className="text-base" />
+        <VtopiaLogo size="sm" variant="light" />
         <span>© {new Date().getFullYear()} vtopia. We never sell your data.</span>
         <div className="flex gap-4">
           <Link to="/list-your-experience" className="hover:text-gold-brand transition-colors">List your experience</Link>
