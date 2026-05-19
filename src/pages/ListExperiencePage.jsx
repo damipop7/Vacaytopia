@@ -23,7 +23,7 @@ const EMPTY = {
   operator_name: '', operator_email: '', business_name: '',
   title: '', category: '', experience_type: '', price_per_person: '',
   description: '', duration_label: '', max_guests: '',
-  website: '', booking_url: '',
+  website: '', booking_url: '', faq_text: '',
 }
 
 export default function ListExperiencePage() {
@@ -53,6 +53,7 @@ export default function ListExperiencePage() {
         max_guests:      form.max_guests ? parseInt(form.max_guests) : null,
         website:         form.website.trim() || null,
         booking_url:     form.booking_url.trim() || null,
+        faq_text:        form.faq_text.trim() || null,
       })
 
     if (error) {
@@ -192,6 +193,19 @@ export default function ListExperiencePage() {
                     onChange={e => set('description', e.target.value)}
                     placeholder="Describe the experience from a visitor's perspective. What will they see, taste, or do? What makes it uniquely Kansas City?"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Common questions visitors ask <span className="text-gray-400 font-normal">(optional — powers our AI concierge)</span>
+                  </label>
+                  <textarea
+                    rows={4} className="input-field text-sm resize-none"
+                    value={form.faq_text}
+                    onChange={e => set('faq_text', e.target.value)}
+                    placeholder={'Q: Is parking available?\nA: Yes, free street parking on 18th St.\n\nQ: Is it vegetarian-friendly?\nA: Absolutely — we accommodate all diets.'}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Write the top 3–5 questions visitors ask, plus your answers. This helps tourists get instant answers 24/7.</p>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
