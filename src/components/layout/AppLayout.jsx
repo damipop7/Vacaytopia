@@ -226,6 +226,7 @@ export default function AppLayout() {
         <span>© {new Date().getFullYear()} vtopia. We never sell your data.</span>
         <div className="flex gap-4">
           <Link to="/list-your-experience" className="hover:text-gold-brand transition-colors">List your experience</Link>
+          <Link to="/become-a-guide" className="hover:text-gold-brand transition-colors">Become a guide</Link>
           <Link to="/privacy" className="hover:text-gold-brand transition-colors">Privacy</Link>
           <Link to="/terms" className="hover:text-gold-brand transition-colors">Terms</Link>
           <a href="mailto:hello@vtopia.world" className="hover:text-gold-brand transition-colors">Support</a>
