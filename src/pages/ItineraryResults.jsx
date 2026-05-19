@@ -9,6 +9,12 @@ import { CITY_LABELS, BUDGET_LABELS } from "../lib/cities";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Cache key fields used to decide whether a stored itinerary matches the current quiz answers.
+// Deliberately excludes interests/extras so minor wording changes don't force regeneration.
+export function itineraryCacheKey(answers) {
+  return `${answers?.city}|${answers?.startDate}|${answers?.endDate}|${answers?.budget}`;
+}
+
 const INTEREST_TAG_MAP = {
   food:      ["cuisine:american", "cuisine:burger", "cuisine:chicken", "cuisine:coffee_shop",
                "cuisine:ethiopian", "cuisine:irish", "cuisine:italian", "cuisine:mexican",
@@ -23,7 +29,7 @@ const INTEREST_TAG_MAP = {
   music:     ["tourism:attraction"],
 };
 
-function LoadingScreen({ city }) {
+function LoadingScreen({ city, streamedHeadline, isRetrying }) {
   const [progress, setProgress] = useState(0);
   const [stageIndex, setStageIndex] = useState(0);
   const stages = [
@@ -55,8 +61,19 @@ function LoadingScreen({ city }) {
         <div className="absolute inset-0 flex items-center justify-center text-4xl">✈️</div>
       </div>
       <div className="text-center">
-        <h2 className="text-2xl md:text-3xl font-bold mb-2">Building your perfect trip...</h2>
-        <p className="text-white/40 text-sm">Personalized plan for {city}</p>
+        {streamedHeadline ? (
+          <>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 animate-fade-in">{streamedHeadline}</h2>
+            <p className="text-white/40 text-sm">Finishing up the details...</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">
+              {isRetrying ? "Still working on it..." : "Building your perfect trip..."}
+            </h2>
+            <p className="text-white/40 text-sm">Personalized plan for {city}</p>
+          </>
+        )}
       </div>
       <div className="w-full max-w-sm">
         <div className="flex justify-between items-center mb-2">
@@ -305,6 +322,8 @@ function ShareButton({ itineraryId, headline }) {
   );
 }
 
+const STORAGE_KEY = "vtopia_active_itinerary";
+
 export default function ItineraryResults() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -314,6 +333,8 @@ export default function ItineraryResults() {
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState("itinerary");
   const [savedItineraryId, setSavedItineraryId] = useState(null);
+  const [streamedHeadline, setStreamedHeadline] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const hasFetched = useRef(false);
   const { weather } = useWeather(answers?.city);
 
@@ -322,24 +343,54 @@ export default function ItineraryResults() {
     : 0;
 
   useEffect(() => {
-    // Give React one tick to hydrate location.state before redirecting
     if (!answers) {
       navigate("/itinerary", { replace: true });
       return;
     }
     if (hasFetched.current) return;
     hasFetched.current = true;
-    generateItinerary();
+
+    // Restore from cache first — skips the API call entirely if answers match
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (
+          cached.itinerary?.days?.length > 0 &&
+          itineraryCacheKey(cached.answers) === itineraryCacheKey(answers)
+        ) {
+          setItinerary(cached.itinerary);
+          if (cached.itineraryId) setSavedItineraryId(cached.itineraryId);
+          setStatus("success");
+          return;
+        }
+      }
+    } catch { /* corrupt cache — fall through to generation */ }
+
+    generateItinerary(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answers]);
 
-  async function generateItinerary() {
+  async function generateItinerary(isRetry) {
+    // First attempt: 30s. Auto-retry gets 50s since the first already warmed up the edge function.
+    const timeoutMs = isRetry ? 50_000 : 30_000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55_000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       setStatus("loading");
-      const { data: { session } } = await supabase.auth.getSession()
-      const authToken = session?.access_token || SUPABASE_ANON_KEY
+      setStreamedHeadline(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
+      if (!authToken) {
+        navigate("/auth", {
+          state: { from: "/itinerary/results", answers, message: "Sign in to generate your itinerary" },
+        });
+        return;
+      }
+
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-itinerary`,
         {
@@ -353,18 +404,59 @@ export default function ItineraryResults() {
           signal: controller.signal,
         }
       );
+
+      if (response.status === 401) {
+        navigate("/auth", {
+          state: { from: "/itinerary/results", answers, message: "Sign in to generate your itinerary" },
+        });
+        return;
+      }
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData?.error || `Server error ${response.status}`);
       }
-      const { itinerary: parsed } = await response.json();
-      if (!parsed) throw new Error("No itinerary returned from server");
+
+      // Read the streaming plain-text response and accumulate the JSON
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      let headlineExtracted = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+
+        // Extract the headline as soon as it appears so the loading screen shows it
+        if (!headlineExtracted) {
+          const match = accumulated.match(/"headline"\s*:\s*"([^"]+)"/);
+          if (match) {
+            setStreamedHeadline(match[1]);
+            headlineExtracted = true;
+          }
+        }
+      }
+
+      if (!accumulated.trim()) throw new Error("Empty response from server");
+
+      const cleaned = accumulated.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (!parsed?.days?.length) throw new Error("Invalid itinerary — missing days");
+
       setItinerary(parsed);
       setStatus("success");
+
+      // Write to cache
       try {
-        sessionStorage.setItem('vtopia_active_itinerary', JSON.stringify({ itinerary: parsed, answers, city: answers.city }))
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          itinerary: parsed,
+          answers,
+          city: answers.city,
+        }));
       } catch { /* storage unavailable */ }
 
+      // Persist to DB (non-fatal)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const { data: saved } = await supabase
@@ -382,20 +474,58 @@ export default function ItineraryResults() {
           })
           .select("id")
           .single();
-        if (saved?.id) setSavedItineraryId(saved.id);
-      } catch { /* non-fatal: saved state unavailable */ }
+        if (saved?.id) {
+          setSavedItineraryId(saved.id);
+          // Update cache with the DB id so Share works after a back-navigation
+          try {
+            const raw = sessionStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const data = JSON.parse(raw);
+              data.itineraryId = saved.id;
+              sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+          } catch { /* ignore */ }
+        }
+      } catch { /* non-fatal */ }
     } catch (err) {
       const timedOut = err.name === "AbortError";
-      setErrorMsg(timedOut
-        ? "This is taking longer than usual. Please try again — it usually works on the second attempt."
-        : err.message || "Something went wrong.");
+
+      // Auto-retry once on timeout before surfacing the error
+      if (timedOut && !isRetry) {
+        setIsRetrying(true);
+        generateItinerary(true);
+        return;
+      }
+
+      setIsRetrying(false);
+      setErrorMsg(
+        timedOut
+          ? "This is taking longer than usual. Please try again."
+          : err.message || "Something went wrong."
+      );
       setStatus("error");
     } finally {
       clearTimeout(timeoutId);
     }
   }
 
-  if (status === "idle" || status === "loading") return <LoadingScreen city={CITY_LABELS[answers?.city] || "your destination"} />;
+  function handleRegenerate() {
+    // Clear cache so the new generation is stored fresh
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    hasFetched.current = false;
+    setIsRetrying(false);
+    generateItinerary(false);
+  }
+
+  if (status === "idle" || status === "loading") {
+    return (
+      <LoadingScreen
+        city={CITY_LABELS[answers?.city] || "your destination"}
+        streamedHeadline={streamedHeadline}
+        isRetrying={isRetrying}
+      />
+    );
+  }
 
   if (status === "error") return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-6 px-4 text-center">
@@ -403,7 +533,7 @@ export default function ItineraryResults() {
       <h2 className="text-2xl font-bold">Could not generate itinerary</h2>
       <p className="text-white/50 text-sm max-w-sm">{errorMsg}</p>
       <div className="flex gap-3">
-        <button onClick={() => { hasFetched.current = false; generateItinerary(); }} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold transition">Try Again</button>
+        <button onClick={handleRegenerate} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold transition">Try Again</button>
         <Link to="/itinerary" className="px-6 py-3 border border-white/20 rounded-xl font-semibold transition text-white/70">Edit Answers</Link>
       </div>
     </div>
@@ -441,9 +571,8 @@ export default function ItineraryResults() {
           <div className="flex flex-wrap gap-3 mt-8">
             <button onClick={() => window.print()} className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">Print</button>
             <ShareButton itineraryId={savedItineraryId} headline={itinerary.headline} />
-            {/* Re-optimize: regenerate itinerary with same answers */}
             <button
-              onClick={() => { hasFetched.current = false; generateItinerary(); }}
+              onClick={handleRegenerate}
               className="px-4 py-2 bg-white/5 border border-white/10 hover:border-amber-500/40 hover:text-amber-300 rounded-xl text-sm transition"
             >
               Re-optimize plan
@@ -485,7 +614,6 @@ export default function ItineraryResults() {
           <div>
             <h2 className="text-xl font-bold mb-2">Recommended Places to Stay</h2>
             <p className="text-white/50 text-sm mb-4">Curated for your budget in {CITY_LABELS[answers.city]}.</p>
-            {/* Booking.com affiliate CTA */}
             <a
               href={bookingCityUrl(CITY_LABELS[answers.city])}
               target="_blank"
