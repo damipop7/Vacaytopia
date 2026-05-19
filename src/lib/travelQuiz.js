@@ -37,7 +37,6 @@ const ALL_QUIZ_CITIES = [
   { value: 'New Orleans',   label: 'New Orleans' },
 ]
 
-// TODO: re-enable post-World-Cup — filter by ACTIVE_CITIES when set
 export const QUIZ_CITIES = ALL_QUIZ_CITIES.filter(c => c.value === 'all' || isCityActive(c.value))
 
 export function labelInterests(ids) {

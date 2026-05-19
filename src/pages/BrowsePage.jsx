@@ -10,7 +10,7 @@ const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
 const ALL_CITIES = [
   { value: 'all',           label: '🌍 All Cities' },
-  { value: 'Kansas City',   label: '🥩 Kansas City' },  // TODO: re-enable post-World-Cup
+  { value: 'Kansas City',   label: '🥩 Kansas City' },
   { value: 'Miami',         label: '🌊 Miami' },
   { value: 'New York City', label: '🗽 New York City' },
   { value: 'Orlando',       label: '🎢 Orlando' },
@@ -19,7 +19,6 @@ const ALL_CITIES = [
   { value: 'Austin',        label: '🎸 Austin' },
 ]
 
-// TODO: re-enable post-World-Cup — filter to ACTIVE_CITIES when set
 const CITIES = ALL_CITIES.filter(c =>
   c.value === 'all' || isCityActive(c.value)
 )
@@ -59,7 +58,6 @@ export default function BrowsePage() {
   const { city: cityParam } = useParams()
   const [searchParams]      = useSearchParams()
 
-  // TODO: re-enable post-World-Cup — remove shouldRedirect logic
   const resolvedCityParam = resolveBrowseCityParam(cityParam)
   const shouldRedirect = !!(resolvedCityParam && !isCityActive(resolvedCityParam) && SINGLE_CITY_MODE)
 
@@ -138,7 +136,6 @@ export default function BrowsePage() {
     ? `Explore handpicked experiences in ${cityName} — food, outdoors, nightlife, arts, and more. Book local adventures with Vtopia.`
     : 'Discover the best local experiences across US cities. Personalized travel recommendations for food, outdoors, nightlife, arts, and wellness.'
 
-  // TODO: re-enable post-World-Cup — remove this redirect
   if (shouldRedirect) return <Navigate to="/browse/kansas-city" replace />
 
   return (
