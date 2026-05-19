@@ -692,6 +692,7 @@ function SubmissionsTab({ onPendingCount }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState(null)
   const [expanded, setExpanded] = useState(null)
+  const [sendingReport, setSendingReport] = useState(null) // row.id being reported
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -739,6 +740,33 @@ function SubmissionsTab({ onPendingCount }) {
       setError(e.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function sendReport(row) {
+    setSendingReport(row.id)
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/operator-report`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:  `Bearer ${session?.access_token}`,
+            apikey:         import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ submissionId: row.id }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send report')
+      alert(data.dryRun
+        ? `Dry run (no RESEND_API_KEY): ${data.stats?.bookingCount ?? 0} bookings found.`
+        : `Report sent to ${data.sentTo}`)
+    } catch (e) {
+      alert(`Error: ${e.message}`)
+    } finally {
+      setSendingReport(null)
     }
   }
 
@@ -795,14 +823,21 @@ function SubmissionsTab({ onPendingCount }) {
                       {expanded === row.id ? 'Hide ▲' : 'Details ▼'}
                     </button>
                     {row.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => { setReviewing(row); setNotes('') }}
-                          className="text-xs bg-blue-brand text-white px-3 py-1.5 rounded-pill font-semibold hover:bg-blue-brand/90 transition-colors"
-                        >
-                          Review
-                        </button>
-                      </>
+                      <button
+                        onClick={() => { setReviewing(row); setNotes('') }}
+                        className="text-xs bg-blue-brand text-white px-3 py-1.5 rounded-pill font-semibold hover:bg-blue-brand/90 transition-colors"
+                      >
+                        Review
+                      </button>
+                    )}
+                    {row.status === 'approved' && (
+                      <button
+                        onClick={() => sendReport(row)}
+                        disabled={sendingReport === row.id}
+                        className="text-xs bg-[#10b981] text-white px-3 py-1.5 rounded-pill font-semibold hover:bg-[#059669] disabled:opacity-50 transition-colors"
+                      >
+                        {sendingReport === row.id ? 'Sending…' : 'Send Report'}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -813,6 +848,7 @@ function SubmissionsTab({ onPendingCount }) {
                     <DetailField label="Description"   value={row.description} />
                     <DetailField label="Duration"      value={row.duration_label} />
                     <DetailField label="Max guests"    value={row.max_guests} />
+                    <DetailField label="FAQ text"      value={row.faq_text || '—'} />
                     <DetailField label="Website"       value={row.website ? <a href={row.website} target="_blank" rel="noopener noreferrer" className="text-blue-brand hover:underline truncate block">{row.website}</a> : '—'} />
                     <DetailField label="Booking URL"   value={row.booking_url ? <a href={row.booking_url} target="_blank" rel="noopener noreferrer" className="text-blue-brand hover:underline truncate block">{row.booking_url}</a> : '—'} />
                     <DetailField label="Experience type" value={row.experience_type} />

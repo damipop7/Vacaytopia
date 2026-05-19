@@ -6,6 +6,7 @@ import { useWishlist } from '../hooks/useWishlist'
 import { PriceTier, getPhotoUrl, pickHighlights } from '../components/cards/ExperienceCard'
 import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
 import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
+import ExperienceConcierge from '../components/ui/ExperienceConcierge'
 
 // Only these types go through the Vtopia internal booking flow
 const BOOKABLE_VIA_VTOPIA = new Set(['reservable'])
@@ -751,6 +752,9 @@ function ExperiencePageInner({ id }) {
         </div>
       </div>
     </div>
+
+    {/* AI Concierge — floating chat button */}
+    <ExperienceConcierge exp={exp} />
     </>
   )
 }
