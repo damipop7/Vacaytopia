@@ -12,7 +12,6 @@ const ALL_CITIES = [
   { id: "austin",      name: "Austin",        emoji: "🎸", vibe: "Music & Outdoors" },
 ];
 
-// TODO: re-enable post-World-Cup — filter by ACTIVE_CITIES when set
 const CITY_NAME_MAP = { "kansas-city": "Kansas City", nyc: "New York City", miami: "Miami", orlando: "Orlando", "las-vegas": "Las Vegas", "new-orleans": "New Orleans", austin: "Austin" };
 const CITIES = ALL_CITIES.filter(c => isCityActive(CITY_NAME_MAP[c.id] ?? c.name));
 
