@@ -24,6 +24,7 @@ const WorldCupPage         = lazy(() => import('./pages/WorldCupPage'))
 const KansasCityPage       = lazy(() => import('./pages/KansasCityPage'))
 const ListExperiencePage   = lazy(() => import('./pages/ListExperiencePage'))
 const BecomeAGuidePage     = lazy(() => import('./pages/BecomeAGuidePage'))
+const ClaimExperiencePage  = lazy(() => import('./pages/ClaimExperiencePage'))
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -76,6 +77,7 @@ export default function App() {
                 <Route path="/kansas-city"         element={<KansasCityPage />} />
                 <Route path="/list-your-experience" element={<ListExperiencePage />} />
                 <Route path="/become-a-guide"       element={<BecomeAGuidePage />} />
+                <Route path="/claim/:id"            element={<ClaimExperiencePage />} />
               </Route>
 
               <Route path="/auth"          element={<AuthPage />} />

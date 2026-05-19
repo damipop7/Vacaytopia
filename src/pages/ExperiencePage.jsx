@@ -738,6 +738,13 @@ function ExperiencePageInner({ id }) {
               }} className="btn-outline text-xs px-4 py-2">
                 🔗 Share this experience
               </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/claim/${exp.id}`)}
+                className="text-xs text-gray-400 hover:text-blue-brand transition-colors px-4 py-2 border border-transparent hover:border-blue-brand/20 rounded-pill"
+              >
+                {exp.is_claimed ? '✓ Verified listing' : 'Own this business? Claim listing →'}
+              </button>
             </div>
 
             {/* Reviews */}
