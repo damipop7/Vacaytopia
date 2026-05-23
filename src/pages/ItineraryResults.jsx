@@ -376,6 +376,7 @@ export default function ItineraryResults() {
     const timeoutMs = isRetry ? 50_000 : 30_000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let stallCheckId = null;
 
     try {
       setStatus("loading");
@@ -423,9 +424,19 @@ export default function ItineraryResults() {
       let accumulated = "";
       let headlineExtracted = false;
 
+      // Stall detection: if no bytes arrive for 15s, abort so the retry logic fires
+      let lastByteAt = Date.now();
+      stallCheckId = setInterval(() => {
+        if (Date.now() - lastByteAt > 15_000) {
+          clearInterval(stallCheckId);
+          controller.abort();
+        }
+      }, 2_000);
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        lastByteAt = Date.now();
         accumulated += decoder.decode(value, { stream: true });
 
         // Extract the headline as soon as it appears so the loading screen shows it
@@ -506,6 +517,7 @@ export default function ItineraryResults() {
       setStatus("error");
     } finally {
       clearTimeout(timeoutId);
+      if (stallCheckId !== null) clearInterval(stallCheckId);
     }
   }
 

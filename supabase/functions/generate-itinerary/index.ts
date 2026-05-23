@@ -118,7 +118,7 @@ function buildPrompt(answers: any, experiences: Experience[]): string {
             return `[${e.id}] ${e.title} | ${e.category} | ${price} | ${e.duration_label}${note ? ` | ${note}` : ""}`;
           })
           .join("\n")
-      }\n\nWhen an activity slot matches one of the above: set "experienceId" to its UUID and "cost" to its price display (e.g. "$$" or "Free"). IMPORTANT: only suggest "Book via Vtopia" for experiences whose note says "Book in advance via Vtopia". For all other types, use the booking note as the tip — never suggest internal Vtopia booking for restaurants, parks, nightlife, or ticketed events.`
+      }\n\nWhen an activity slot is a strong match for one of the above listings: set "experienceId" to its exact UUID. CRITICAL: NEVER invent or fabricate a UUID — if the activity does not exactly match a catalog entry, set experienceId to "". Do not set experienceId for restaurants, hotels, parks, or any place not in the catalog above. Only suggest "Book via Vtopia" for entries whose note says "Book in advance via Vtopia". For all others, use the booking note as the tip.`
     : "";
 
   return `You are a travel concierge. Create a ${days}-day itinerary for a ${answers.traveler || "traveler"} trip to ${city}. Budget: ${BUDGET_LABELS[answers.budget]} per person/day. Interests: ${answers.interests.join(", ")}. Hotel tier: ${BUDGET_HOTEL_TIER[answers.budget]}.${groupLine}${helpLine}${extras}${personalizationSection}${catalogSection}
@@ -191,7 +191,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 4096,
+        max_tokens: 2048,
         stream: true,
         system: "You are a travel concierge. Respond ONLY with valid JSON. No markdown, no explanation.",
         messages: [{ role: "user", content: buildPrompt(answers, experiences) }],
