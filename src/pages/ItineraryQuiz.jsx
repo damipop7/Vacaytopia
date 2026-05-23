@@ -235,7 +235,7 @@ export default function ItineraryQuiz() {
                     value={answers.startDate}
                     min={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setAnswers((p) => ({ ...p, startDate: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition [color-scheme:dark]"
                   />
                   {errors.startDate && <p className="text-red-400 text-xs mt-1">{errors.startDate}</p>}
                 </div>
@@ -246,7 +246,7 @@ export default function ItineraryQuiz() {
                     value={answers.endDate}
                     min={answers.startDate || new Date().toISOString().split("T")[0]}
                     onChange={(e) => setAnswers((p) => ({ ...p, endDate: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition [color-scheme:dark]"
                   />
                   {errors.endDate && <p className="text-red-400 text-xs mt-1">{errors.endDate}</p>}
                 </div>

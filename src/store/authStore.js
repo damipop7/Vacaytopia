@@ -9,20 +9,25 @@ export const useAuthStore = create((set, get) => ({
 
   // Called once on app mount — listens for auth state changes
   init: async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      set({ user: session.user })
-      await get().fetchProfile(session.user.id)
-    } else {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        set({ user: session.user })
+        try { await get().fetchProfile(session.user.id) } catch { /* non-fatal */ }
+      } else {
+        set({ user: null, profile: null })
+      }
+    } catch {
       set({ user: null, profile: null })
+    } finally {
+      set({ loading: false })
     }
-    set({ loading: false })
 
     // FIX: store the unsubscribe handle so we don't leak listeners on HMR
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         set({ user: session.user })
-        await get().fetchProfile(session.user.id)
+        try { await get().fetchProfile(session.user.id) } catch { /* non-fatal */ }
       } else {
         set({ user: null, profile: null })
       }

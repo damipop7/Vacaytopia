@@ -285,9 +285,10 @@ export default function BookingPage() {
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />
 
   if (!exp) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <p className="text-gray-500 text-sm">Experience not found.</p>
-      <button onClick={() => navigate('/browse')} className="btn-primary">Back to Browse</button>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="text-gray-500 text-sm">This experience isn't available for booking.</p>
+      <button onClick={() => navigate(-1)} className="btn-outline text-sm">← Go back</button>
+      <button onClick={() => navigate('/browse')} className="btn-primary text-sm">Browse experiences</button>
     </div>
   )
 
