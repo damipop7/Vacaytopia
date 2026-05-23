@@ -67,6 +67,7 @@ export function useSaveQuiz() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz', user?.id] })
       queryClient.invalidateQueries({ queryKey: ['recommendations'] })
+      queryClient.invalidateQueries({ queryKey: ['user-prefs'] })
     },
   })
 }
