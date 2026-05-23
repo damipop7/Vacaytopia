@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, lazy, Suspense, Fragment } from 'react'
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
+import { useLatestQuiz } from '../hooks/useQuiz'
+import { useAuthStore } from '../store/authStore'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
+import { QUIZ_INTERESTS } from '../lib/travelQuiz'
 import { Clock, SlidersHorizontal, X } from 'lucide-react'
 
 const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
@@ -87,6 +90,9 @@ export default function BrowsePage() {
       activePillRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
     }
   }, [category])
+
+  const { user } = useAuthStore()
+  const { data: quizData } = useLatestQuiz()
 
   const { data: experiences = [], isLoading, error } = useRecommendations({
     city:      city !== 'all' ? city : undefined,
@@ -452,22 +458,40 @@ export default function BrowsePage() {
           </div>
         </div>
 
-        {/* Recommended banner (shown when user has quiz results) */}
-        {sort === 'Recommended' && experiences.some(e => e._score) && (
-          <div className="bg-blue-brand text-white rounded-card px-5 py-3 mb-5 flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div className="font-bold text-sm">✨ Personalised for you</div>
-              <div className="text-white/70 text-xs">Results ranked by your interests, budget, and travel style</div>
+        {/* Personalized for you — shown when user has saved interests */}
+        {user && quizData?.interests?.length > 0 && !isLoading && experiences.length > 0 && (() => {
+          const interestLabelMap = Object.fromEntries(QUIZ_INTERESTS.map(i => [i.id, { label: i.label, emoji: i.emoji }]))
+          const categoryMap = { food: 'Food & Drink', outdoors: 'Outdoors', nightlife: 'Nightlife', sports: 'Sports', arts: 'Arts & Culture', wellness: 'Wellness' }
+          const interestCategories = new Set(quizData.interests.map(i => categoryMap[i]).filter(Boolean))
+          const picks = experiences.filter(e => interestCategories.has(e.category)).slice(0, 6)
+          if (!picks.length) return null
+          return (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div>
+                  <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Personalized for you</h2>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {quizData.interests.map(id => {
+                      const info = interestLabelMap[id]
+                      return info ? (
+                        <span key={id} className="text-[11px] font-semibold bg-blue-tint text-blue-brand px-2.5 py-1 rounded-full border border-blue-brand/15 flex items-center gap-1">
+                          <span>{info.emoji}</span>{info.label}
+                        </span>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+                <Link to="/interests" className="text-xs text-blue-brand hover:underline flex-shrink-0 font-semibold">
+                  Update interests →
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                {picks.map(exp => <ExperienceCard key={exp.id} experience={exp} />)}
+              </div>
+              <div className="border-t border-blue-brand/8 mt-8 mb-6" />
             </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {['Food & Drink','Outdoors','Nightlife'].map(t => (
-                <span key={t} className="bg-white/15 text-white text-xs font-semibold px-2.5 py-1 rounded-pill border border-white/20">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Error */}
         {error && (
