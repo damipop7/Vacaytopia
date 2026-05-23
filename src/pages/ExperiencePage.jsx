@@ -444,9 +444,25 @@ function ExperiencePageInner({ id }) {
 
   if (error || !exp) return (
     <div className="max-w-4xl mx-auto px-6 py-12 text-center">
-      <div className="text-4xl mb-4">😕</div>
-      <h2 className="font-display font-bold text-xl text-[#0D1B3E] mb-2">Experience not found</h2>
-      <button type="button" onClick={() => navigate('/browse')} className="btn-primary mt-4 text-sm">Browse All</button>
+      <div className="text-4xl mb-4">{fromItinerary ? '📍' : '😕'}</div>
+      <h2 className="font-display font-bold text-xl text-[#0D1B3E] mb-2">
+        {fromItinerary ? "This spot isn't on Vtopia yet" : 'Experience not found'}
+      </h2>
+      {fromItinerary && (
+        <p className="text-gray-500 text-sm mb-2 max-w-sm mx-auto">
+          Your itinerary suggested this activity but it isn't currently listed on our platform.
+        </p>
+      )}
+      <div className="flex gap-3 justify-center flex-wrap mt-4">
+        {fromItinerary && (
+          <button type="button" onClick={() => navigate(-1)} className="btn-outline text-sm">
+            ← Back to itinerary
+          </button>
+        )}
+        <button type="button" onClick={() => navigate('/browse')} className="btn-primary text-sm">
+          Browse experiences
+        </button>
+      </div>
     </div>
   )
 
