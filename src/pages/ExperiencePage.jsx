@@ -7,6 +7,7 @@ import { PriceTier, getPhotoUrl, pickHighlights } from '../components/cards/Expe
 import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
 import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
 import ExperienceConcierge from '../components/ui/ExperienceConcierge'
+import { usePersonalizedBlurb } from '../hooks/usePersonalizedBlurb'
 
 // Only these types go through the Vtopia internal booking flow
 const BOOKABLE_VIA_VTOPIA = new Set(['reservable'])
@@ -433,6 +434,7 @@ function ExperiencePageInner({ id }) {
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const { data: exp, isLoading, error } = useExperience(id)
   const { isSaved, toggleSave } = useWishlist()
+  const { data: personalizedBlurb, isLoading: blurbLoading } = usePersonalizedBlurb(exp)
 
   if (isLoading) return (
     <div className="max-w-4xl mx-auto px-6 py-12 animate-pulse">
@@ -612,11 +614,35 @@ function ExperiencePageInner({ id }) {
               </div>
             </div>
 
-            {/* Description */}
-            {exp.description && (
+            {/* About — personalized when quiz answers are in session, static otherwise */}
+            {(exp.description || personalizedBlurb || blurbLoading) && (
               <div className="bg-white rounded-card border border-blue-brand/10 p-6 mb-4">
-                <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-3">About this experience</h2>
-                <p className="text-gray-500 text-sm leading-relaxed">{exp.description}</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="font-display font-bold text-lg text-[#0D1B3E]">About this experience</h2>
+                  {personalizedBlurb && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex-shrink-0">
+                      ✦ Personalized for you
+                    </span>
+                  )}
+                </div>
+                {blurbLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3.5 bg-gray-100 rounded animate-pulse w-full" />
+                    <div className="h-3.5 bg-gray-100 rounded animate-pulse w-5/6" />
+                    <div className="h-3.5 bg-gray-100 rounded animate-pulse w-4/6" />
+                  </div>
+                ) : (
+                  <>
+                    {personalizedBlurb && (
+                      <p className="text-gray-700 text-sm leading-relaxed mb-3">{personalizedBlurb}</p>
+                    )}
+                    {exp.description && (
+                      <p className={`text-gray-500 text-sm leading-relaxed ${personalizedBlurb ? 'border-t border-gray-100 pt-3' : ''}`}>
+                        {exp.description}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
