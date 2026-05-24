@@ -523,10 +523,14 @@ export default function ItineraryResults() {
         }
       } catch { /* non-fatal */ }
     } catch (err) {
-      const timedOut = err.name === "AbortError";
+      const timedOut     = err.name === "AbortError";
+      // JSON truncation (max_tokens hit) or empty stream — worth retrying once
+      const parseFailure = err instanceof SyntaxError
+        || err.message === "Invalid itinerary — missing days"
+        || err.message === "Empty response from server";
 
-      // Auto-retry once on timeout before surfacing the error
-      if (timedOut && !isRetry) {
+      // Auto-retry once on timeout or parse failure before surfacing the error
+      if ((timedOut || parseFailure) && !isRetry) {
         setIsRetrying(true);
         generateItinerary(true);
         return;
@@ -536,7 +540,9 @@ export default function ItineraryResults() {
       setErrorMsg(
         timedOut
           ? "This is taking longer than usual. Please try again."
-          : err.message || "Something went wrong."
+          : parseFailure
+            ? "The itinerary response was incomplete. Please try again."
+            : err.message || "Something went wrong."
       );
       setStatus("error");
     } finally {
