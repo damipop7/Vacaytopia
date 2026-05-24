@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useLatestQuiz } from '../hooks/useQuiz'
 import { labelInterests, labelStyle, labelGroups } from '../lib/travelQuiz'
 import { useWishlist } from '../hooks/useWishlist'
 import { useBookings } from '../hooks/useBookings'
+import { useMyTrips } from '../hooks/useTrip'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { supabase } from '../lib/supabase'
 
 const TABS = ['wishlist','history','preferences','settings']
 
-// Icons for each tab (used on all sizes)
-const TAB_ICONS  = { wishlist:'❤', history:'📅', preferences:'⚙', settings:'🔒' }
-// Short labels shown at sm+ alongside icon
+const TAB_ICONS  = { wishlist:'❤', history:'🗺️', preferences:'⚙', settings:'🔒' }
 const TAB_SHORT  = { wishlist:'Saved', history:'Trips', preferences:'Prefs', settings:'Account' }
-// Long labels shown at md+ (hidden below md)
-const TAB_LABELS = { wishlist:'❤ Saved', history:'📅 Trip History', preferences:'⚙ Preferences', settings:'🔒 Account' }
+const TAB_LABELS = { wishlist:'❤ Saved', history:'🗺️ Trips', preferences:'⚙ Preferences', settings:'🔒 Account' }
 
 // ── StarRating — interactive 1-5 star picker ────────────────────────────────
 function StarRating({ value, onChange }) {
@@ -122,6 +120,7 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
   const { user, profile, updateProfile, signOut } = useAuthStore()
   const { wishlist, savedIds, isLoading: wlLoading } = useWishlist()
   const { bookings, isLoading: bkLoading } = useBookings()
+  const { data: trips = [], isLoading: tripsLoading } = useMyTrips()
   const { data: quiz, isLoading: quizLoading } = useLatestQuiz()
   const navigate = useNavigate()
 
@@ -256,80 +255,137 @@ export default function ProfilePage({ tab: defaultTab = 'wishlist' }) {
           </div>
         )}
 
-        {/* HISTORY */}
+        {/* TRIPS & BOOKING HISTORY */}
         {tab === 'history' && (
-          <div className="bg-white rounded-card border border-blue-brand/10 p-6">
-            <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-5">Trip History</h2>
-            {bkLoading ? (
-              <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-16 bg-blue-tint rounded-card animate-pulse"/>)}</div>
-            ) : bookings.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {bookings.map(b => {
-                  const rs = reviewStates[b.id] || {}
-                  const alreadyReviewed = reviewedBookingIds.has(b.id) || rs.submitted
-                  return (
-                    <div key={b.id} className="p-4 bg-gray-50 rounded-[9px] border border-blue-brand/8 hover:border-blue-brand/20 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">{b.experiences?.image_emoji || '🌍'}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-[#0D1B3E] truncate">{b.experiences?.title}</div>
-                          <div className="text-xs text-gray-400">{b.experiences?.city} · {new Date(b.booking_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="font-bold text-sm text-blue-brand">${b.total_amount?.toFixed(2)}</div>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[b.status] || 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 pl-11 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-400">
-                        <span className="font-semibold text-[#10b981]">● Paid</span>
-                        <span aria-hidden>—</span>
-                        <span className={b.status !== 'pending' ? 'font-semibold text-[#10b981]' : ''}>● Confirmed</span>
-                        <span aria-hidden>—</span>
-                        <span className={b.status === 'completed' ? 'font-semibold text-[#10b981]' : ''}>● Completed</span>
-                      </div>
+          <div className="flex flex-col gap-5">
 
-                      {/* Review section — only for completed bookings */}
-                      {b.status === 'completed' && (
-                        <div className="mt-3 pl-11">
-                          {alreadyReviewed ? (
-                            rs.submitted ? (
-                              <div className="text-xs font-semibold text-[#10b981]">✓ Review submitted — thanks!</div>
-                            ) : (
-                              <span className="text-xs font-semibold text-gray-400">Reviewed ✓</span>
-                            )
-                          ) : rs.open ? (
-                            <InlineReviewForm
-                              booking={b}
-                              userId={user?.id}
-                              onSuccess={() => {
-                                setReviewStates(prev => ({ ...prev, [b.id]: { submitted: true, open: false } }))
-                                setReviewCount(c => c + 1)
-                                setReviewedBookingIds(prev => new Set([...prev, b.id]))
-                              }}
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setReviewStates(prev => ({ ...prev, [b.id]: { open: true } }))}
-                              className="text-xs font-semibold text-blue-brand border border-blue-brand/20 rounded-pill px-3 py-1.5 hover:bg-blue-tint transition-colors"
-                            >
-                              Leave a Review
-                            </button>
-                          )}
+            {/* ── Group Trip Plans ── */}
+            <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Trip Plans</h2>
+                <Link to="/trips" className="text-sm font-semibold text-blue-brand hover:underline">
+                  View all →
+                </Link>
+              </div>
+
+              {tripsLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[1,2].map(i => <div key={i} className="h-16 bg-blue-tint rounded-[9px] animate-pulse" />)}
+                </div>
+              ) : trips.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {trips.slice(0, 4).map(t => (
+                    <Link
+                      key={t.id}
+                      to={`/trips/${t.id}`}
+                      className="flex items-center gap-3 p-3 rounded-[9px] border border-blue-brand/8 hover:border-blue-brand/25 hover:bg-blue-tint transition-colors group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-blue-brand/10 flex items-center justify-center text-blue-brand font-bold text-xs flex-shrink-0">
+                        {t.trip_type === 'group' ? '👥' : '🧳'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-[#0D1B3E] truncate group-hover:text-blue-brand">{t.title}</div>
+                        <div className="text-xs text-gray-400">
+                          📍 {t.destination}
+                          {t.start_date && ` · ${new Date(t.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+                          {' · '}{(t.trip_members ?? []).length} member{(t.trip_members ?? []).length !== 1 ? 's' : ''}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-3">📅</div>
-                <div className="font-display font-bold text-lg text-[#0D1B3E] mb-2">No trips yet</div>
-                <p className="text-gray-400 text-sm mb-5">Book your first experience and it'll show up here.</p>
-                <button onClick={() => navigate('/browse')} className="btn-primary text-sm">Explore Experiences</button>
-              </div>
-            )}
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        t.status === 'active'    ? 'bg-green-50 text-green-700' :
+                        t.status === 'completed' ? 'bg-blue-tint text-blue-brand' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>{t.status ?? 'active'}</span>
+                    </Link>
+                  ))}
+                  {trips.length > 4 && (
+                    <Link to="/trips" className="text-center text-xs text-blue-brand hover:underline py-1">
+                      + {trips.length - 4} more trip{trips.length - 4 !== 1 ? 's' : ''}
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-2">🗺️</div>
+                  <p className="text-gray-400 text-sm mb-4">No trip plans yet.</p>
+                  <Link to="/trips/new" className="btn-primary text-sm inline-block">Plan a trip</Link>
+                </div>
+              )}
+            </div>
+
+            {/* ── Booking History ── */}
+            <div className="bg-white rounded-card border border-blue-brand/10 p-6">
+              <h2 className="font-display font-bold text-lg text-[#0D1B3E] mb-5">Booking History</h2>
+              {bkLoading ? (
+                <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-16 bg-blue-tint rounded-card animate-pulse"/>)}</div>
+              ) : bookings.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {bookings.map(b => {
+                    const rs = reviewStates[b.id] || {}
+                    const alreadyReviewed = reviewedBookingIds.has(b.id) || rs.submitted
+                    return (
+                      <div key={b.id} className="p-4 bg-gray-50 rounded-[9px] border border-blue-brand/8 hover:border-blue-brand/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">{b.experiences?.image_emoji || '🌍'}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm text-[#0D1B3E] truncate">{b.experiences?.title}</div>
+                            <div className="text-xs text-gray-400">{b.experiences?.city} · {new Date(b.booking_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-bold text-sm text-blue-brand">${b.total_amount?.toFixed(2)}</div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[b.status] || 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 pl-11 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-400">
+                          <span className="font-semibold text-[#10b981]">● Paid</span>
+                          <span aria-hidden>—</span>
+                          <span className={b.status !== 'pending' ? 'font-semibold text-[#10b981]' : ''}>● Confirmed</span>
+                          <span aria-hidden>—</span>
+                          <span className={b.status === 'completed' ? 'font-semibold text-[#10b981]' : ''}>● Completed</span>
+                        </div>
+
+                        {b.status === 'completed' && (
+                          <div className="mt-3 pl-11">
+                            {alreadyReviewed ? (
+                              rs.submitted ? (
+                                <div className="text-xs font-semibold text-[#10b981]">✓ Review submitted — thanks!</div>
+                              ) : (
+                                <span className="text-xs font-semibold text-gray-400">Reviewed ✓</span>
+                              )
+                            ) : rs.open ? (
+                              <InlineReviewForm
+                                booking={b}
+                                userId={user?.id}
+                                onSuccess={() => {
+                                  setReviewStates(prev => ({ ...prev, [b.id]: { submitted: true, open: false } }))
+                                  setReviewCount(c => c + 1)
+                                  setReviewedBookingIds(prev => new Set([...prev, b.id]))
+                                }}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setReviewStates(prev => ({ ...prev, [b.id]: { open: true } }))}
+                                className="text-xs font-semibold text-blue-brand border border-blue-brand/20 rounded-pill px-3 py-1.5 hover:bg-blue-tint transition-colors"
+                              >
+                                Leave a Review
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <div className="text-3xl mb-2">📅</div>
+                  <p className="text-gray-400 text-sm mb-4">No individual bookings yet.</p>
+                  <button onClick={() => navigate('/browse')} className="btn-primary text-sm">Explore Experiences</button>
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
