@@ -9,6 +9,11 @@ const STATUS_STYLES = {
   broken:     'bg-red-100 text-red-700',
 }
 
+async function setLinkStatus(id, status, setExperiences) {
+  await supabase.from('experiences').update({ link_status: status }).eq('id', id)
+  setExperiences(prev => prev.map(e => e.id === id ? { ...e, link_status: status } : e))
+}
+
 export default function AdminLinksPage() {
   const [authed,       setAuthed]       = useState(!ADMIN_PASSWORD)
   const [password,     setPassword]     = useState('')
@@ -125,9 +130,25 @@ export default function AdminLinksPage() {
                       <span className="text-xs text-gray-500">{exp.category}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[exp.link_status] || STATUS_STYLES.unverified}`}>
-                        {exp.link_status || 'unverified'}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[exp.link_status] || STATUS_STYLES.unverified}`}>
+                          {exp.link_status || 'unverified'}
+                        </span>
+                        {exp.link_status !== 'verified' && (
+                          <button
+                            onClick={() => setLinkStatus(exp.id, 'verified', setExperiences)}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-green-300 text-green-700 hover:bg-green-50 transition"
+                            title="Mark as verified"
+                          >✓</button>
+                        )}
+                        {exp.link_status !== 'broken' && (
+                          <button
+                            onClick={() => setLinkStatus(exp.id, 'broken', setExperiences)}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-red-300 text-red-700 hover:bg-red-50 transition"
+                            title="Mark as broken"
+                          >✗</button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell max-w-xs">
                       {url ? (
