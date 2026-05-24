@@ -42,13 +42,14 @@ function addUtm(url) {
 
 function resolveCta(exp) {
   const type        = exp.experience_type || 'reservable'
-  const linkOk      = !exp.link_status || exp.link_status === 'verified'
-  const external    = linkOk ? (exp.external_url || exp.website || null) : null
-  const mapsUrl     = addUtm(exp.maps_url) ||
+  // 'broken' links are hidden; 'unverified' links degrade gracefully (label only changes in resolveCtaLabel)
+  const linkBroken = exp.link_status === 'broken'
+  const external   = linkBroken ? null : (exp.external_url || exp.website || null)
+  const mapsUrl      = addUtm(exp.maps_url) ||
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${exp.title} ${exp.city}`)}&${UTM}`
-  const ticketLink  = addUtm(linkOk ? exp.ticket_url : null) || addUtm(external) || mapsUrl
-  const deliveryLink= addUtm(linkOk ? exp.delivery_url : null) || addUtm(external) || mapsUrl
-  const extLink     = addUtm(external) || mapsUrl
+  const ticketLink   = addUtm(linkBroken ? null : exp.ticket_url) || addUtm(external) || mapsUrl
+  const deliveryLink = addUtm(linkBroken ? null : exp.delivery_url) || addUtm(external) || mapsUrl
+  const extLink      = addUtm(external) || mapsUrl
 
   switch (type) {
     case 'restaurant_reserve':
@@ -128,6 +129,21 @@ function resolveCta(exp) {
   }
 }
 
+// Downgrade transactional CTA labels to "Visit website →" for unverified links
+// so we don't promise a working booking flow that may just be a homepage.
+const TRANSACTIONAL_LABELS = new Set([
+  'Reserve a table →', 'Order online →', 'View tickets →',
+  'Get tickets →', 'Check availability →', 'View routes →',
+])
+
+export function resolveCtaLabel(cta, linkVerified) {
+  if (linkVerified || !cta?.primary) return cta
+  const primary = TRANSACTIONAL_LABELS.has(cta.primary.label)
+    ? { ...cta.primary, label: 'Visit website →' }
+    : cta.primary
+  return { ...cta, primary }
+}
+
 function typeLabel(type) {
   return {
     reservable:          'Book via Vtopia',
@@ -154,7 +170,8 @@ function typeLabel(type) {
 // ── ActionPanel — right-side panel for non-reservable experiences ────────────
 function ActionPanel({ exp, saved, onSave }) {
   const [copied, setCopied] = useState(false)
-  const cta   = resolveCta(exp)
+  const linkVerified = !exp.link_status || exp.link_status === 'verified'
+  const cta   = resolveCtaLabel(resolveCta(exp), linkVerified)
   const grad  = GRAD_MAP[exp.image_gradient] || GRAD_MAP['ci-mia']
 
   const resolvedTier = (exp.price_tier !== undefined && exp.price_tier !== null)
