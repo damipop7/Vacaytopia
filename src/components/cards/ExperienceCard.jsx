@@ -102,34 +102,115 @@ function getCategoryFallbackUrl(category) {
   return `https://images.unsplash.com/${photoId}?w=400&h=300&fit=crop&auto=format&q=80`
 }
 
-const GENERIC_TAGS = new Set([
+const GENERIC_PLAIN_TAGS = new Set([
   'food', 'drink', 'food & drink', 'outdoors', 'outdoor', 'nightlife',
   'sports', 'sport', 'arts', 'arts & culture', 'wellness', 'culture',
   'kansas city', 'miami', 'new york city', 'orlando', 'las vegas',
   'new orleans', 'austin', 'kc', 'restaurant', 'bar', 'cafe', 'park',
-  'free', 'paid', 'indoor', 'outdoor',
+  'free', 'paid', 'indoor', 'attraction',
 ])
 
-function toSentenceCase(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+// OSM leisure values that are too generic to surface
+const SUPPRESS_LEISURE = new Set(['park', 'garden', 'pitch', 'common', 'playground'])
+// OSM tourism values to suppress (attraction is too vague; museum/gallery are fine)
+const SUPPRESS_TOURISM = new Set(['attraction', 'yes', 'information'])
+
+function toTitleCase(str) {
+  return str
+    .split(/[\s_]+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
 }
 
-function highlightScore(tag) {
-  const t = tag.trim().toLowerCase()
-  if (GENERIC_TAGS.has(t)) return -1
-  if (t.length < 5) return 0
-  // longer, more descriptive tags score higher
-  return t.length + (t.includes(' ') ? 5 : 0)
+function joinParts(raw) {
+  // semicolon-delimited multi-values → "Part1 & Part2" (max 2 parts)
+  return raw.split(';').slice(0, 2).map(p => toTitleCase(p.trim())).join(' & ')
+}
+
+// Returns a human label for a single raw tag, or null to suppress it.
+export function formatTag(raw) {
+  if (!raw || typeof raw !== 'string') return null
+  const tag = raw.trim()
+  const colonIdx = tag.indexOf(':')
+
+  if (colonIdx === -1) {
+    // plain tag — suppress if generic or too short
+    const lower = tag.toLowerCase()
+    if (GENERIC_PLAIN_TAGS.has(lower) || lower.length < 4) return null
+    return toTitleCase(tag)
+  }
+
+  const key   = tag.slice(0, colonIdx).toLowerCase()
+  const value = tag.slice(colonIdx + 1)
+
+  switch (key) {
+    case 'cuisine': return joinParts(value)
+    case 'sport':   return joinParts(value)
+    case 'leisure': {
+      const lower = value.toLowerCase().replace(/_/g, ' ')
+      if (SUPPRESS_LEISURE.has(lower)) return null
+      // human-friendly overrides for common leisure values
+      const LEISURE_MAP = {
+        'sports centre': 'Sports & Fitness',
+        'disc golf course': 'Disc Golf',
+        'golf course': 'Golf',
+        'amusement arcade': 'Arcade',
+        'sports hall': 'Sports & Fitness',
+        'fitness centre': 'Fitness',
+        'swimming pool': 'Swimming',
+        'ice rink': 'Ice Skating',
+        'bowling alley': 'Bowling',
+      }
+      return LEISURE_MAP[lower] ?? toTitleCase(value)
+    }
+    case 'tourism': {
+      const lower = value.toLowerCase()
+      if (SUPPRESS_TOURISM.has(lower)) return null
+      return toTitleCase(value)
+    }
+    case 'amenity': {
+      // surface only specific useful amenity values
+      const AMENITY_ALLOW = {
+        'theatre': 'Theatre',
+        'cinema': 'Cinema',
+        'nightclub': 'Nightclub',
+        'casino': 'Casino',
+        'arts_centre': 'Arts Centre',
+        'marketplace': 'Market',
+      }
+      return AMENITY_ALLOW[value.toLowerCase()] ?? null
+    }
+    default: return null
+  }
+}
+
+// Priority by OSM key — higher = surfaces first
+function keyPriority(raw) {
+  const colonIdx = raw.indexOf(':')
+  if (colonIdx === -1) return 1
+  const key = raw.slice(0, colonIdx).toLowerCase()
+  return { cuisine: 10, sport: 9, leisure: 6, tourism: 5, amenity: 4 }[key] ?? 1
 }
 
 export function pickHighlights(tags, max = 3) {
   if (!tags?.length) return { shown: [], overflow: 0 }
-  const scored = tags
-    .map(t => ({ tag: t, score: highlightScore(t) }))
-    .filter(t => t.score > 0)
-    .sort((a, b) => b.score - a.score)
-  const shown = scored.slice(0, max).map(t => toSentenceCase(t.tag))
-  const overflow = Math.max(0, scored.length - max)
+
+  const seen   = new Set()
+  const result = []
+
+  const sorted = [...tags].sort((a, b) => keyPriority(b) - keyPriority(a))
+
+  for (const raw of sorted) {
+    const label = formatTag(raw)
+    if (!label) continue
+    const key = label.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push({ label, priority: keyPriority(raw) })
+  }
+
+  const shown    = result.slice(0, max).map(r => r.label)
+  const overflow = Math.max(0, result.length - max)
   return { shown, overflow }
 }
 
