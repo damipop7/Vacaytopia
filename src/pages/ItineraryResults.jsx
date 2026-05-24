@@ -324,15 +324,39 @@ function ShareButton({ itineraryId, headline }) {
 
 const STORAGE_KEY = "vtopia_active_itinerary";
 
+/** Read and validate the sessionStorage cache against the provided answers.
+ *  Returns the parsed cache object on a hit, or null on a miss/error. */
+export function readCachedItinerary(answers) {
+  if (!answers) return null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (c.itinerary?.days?.length > 0 && itineraryCacheKey(c.answers) === itineraryCacheKey(answers)) {
+      return c;
+    }
+  } catch { /* corrupt storage */ }
+  return null;
+}
+
 export default function ItineraryResults() {
   const location = useLocation();
   const navigate = useNavigate();
   const answers = location.state?.answers;
-  const [status, setStatus] = useState("idle");
-  const [itinerary, setItinerary] = useState(null);
+
+  // Initialise synchronously from cache so back-navigation never flashes the loading screen.
+  // `answers` is available here because useLocation() runs before useState().
+  const [status, setStatus] = useState(() =>
+    readCachedItinerary(answers) ? "success" : "idle"
+  );
+  const [itinerary, setItinerary] = useState(() =>
+    readCachedItinerary(answers)?.itinerary ?? null
+  );
   const [errorMsg, setErrorMsg] = useState("");
   const [activeTab, setActiveTab] = useState("itinerary");
-  const [savedItineraryId, setSavedItineraryId] = useState(null);
+  const [savedItineraryId, setSavedItineraryId] = useState(() =>
+    readCachedItinerary(answers)?.itineraryId ?? null
+  );
   const [streamedHeadline, setStreamedHeadline] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const hasFetched = useRef(false);
