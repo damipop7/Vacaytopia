@@ -25,6 +25,10 @@ const KansasCityPage       = lazy(() => import('./pages/KansasCityPage'))
 const ListExperiencePage   = lazy(() => import('./pages/ListExperiencePage'))
 const BecomeAGuidePage     = lazy(() => import('./pages/BecomeAGuidePage'))
 const ClaimExperiencePage  = lazy(() => import('./pages/ClaimExperiencePage'))
+const MyTripsPage          = lazy(() => import('./pages/MyTripsPage'))
+const TripCreationWizard   = lazy(() => import('./pages/TripCreationWizard'))
+const TripDashboard        = lazy(() => import('./pages/TripDashboard'))
+const JoinTripPage         = lazy(() => import('./pages/JoinTripPage'))
 
 import AppLayout      from './components/layout/AppLayout'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -80,6 +84,9 @@ export default function App() {
                 <Route path="/claim/:id"            element={<ClaimExperiencePage />} />
               </Route>
 
+              {/* ── Group travel — join page is public (non-auth visitors see the invite) */}
+              <Route path="/trips/join/:shareToken" element={<JoinTripPage />} />
+
               <Route path="/auth"          element={<AuthPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
 
@@ -90,6 +97,10 @@ export default function App() {
                   <Route path="/profile"            element={<ProfilePage />} />
                   <Route path="/interests"          element={<InterestsPage />} />
                   <Route path="/auth/quiz"          element={<Navigate to="/interests" replace />} />
+                  {/* ── Group travel (protected) */}
+                  <Route path="/trips"              element={<MyTripsPage />} />
+                  <Route path="/trips/new"          element={<TripCreationWizard />} />
+                  <Route path="/trips/:tripId"      element={<TripDashboard />} />
                 </Route>
               </Route>
 
