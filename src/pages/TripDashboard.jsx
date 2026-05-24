@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
+
+const TripMap = lazy(() => import('../components/trips/TripMap'))
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -326,6 +328,7 @@ export default function TripDashboard() {
   const [copied,     setCopied]     = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
   const [feedOpen,   setFeedOpen]   = useState(false)
+  const [view,       setView]       = useState('timeline') // 'timeline' | 'map'
 
   const isOwner = trip?.created_by === user?.id ||
     (trip?.trip_members ?? []).some(m => m.user_id === user?.id && ['owner','admin'].includes(m.role))
@@ -473,11 +476,36 @@ export default function TripDashboard() {
         </div>
       )}
 
-      {/* Day columns */}
+      {/* View toggle */}
+      <div className="flex gap-1.5 mb-5">
+        {[
+          { id: 'timeline', label: '📅 Timeline' },
+          { id: 'map',      label: '🗺️ Map'      },
+        ].map(v => (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => setView(v.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition border ${
+              view === v.id
+                ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
+                : 'bg-white/[0.03] border-white/10 text-white/50 hover:border-white/25 hover:text-white/80'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Day columns / map */}
       {expLoading ? (
         <div className="flex flex-col gap-4">
           {[1,2,3].map(i => <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse" />)}
         </div>
+      ) : view === 'map' ? (
+        <Suspense fallback={<div className="h-64 bg-white/5 rounded-2xl animate-pulse" />}>
+          <TripMap experiences={experiences ?? []} />
+        </Suspense>
       ) : (
         <div className="flex flex-col gap-5">
           {days.map(({ day, date }) => (
