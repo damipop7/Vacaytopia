@@ -6,6 +6,7 @@ export default function MyTripsPage() {
   const { data: trips = [], isLoading, error } = useMyTrips()
 
   return (
+    <div className="min-h-screen bg-gray-950 text-white">
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -62,6 +63,7 @@ export default function MyTripsPage() {
           </Link>
         </div>
       )}
+    </div>
     </div>
   )
 }

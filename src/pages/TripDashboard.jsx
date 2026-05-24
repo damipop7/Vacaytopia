@@ -378,19 +378,23 @@ export default function TripDashboard() {
 
   if (tripLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-10">
-        <div className="h-12 bg-white/5 rounded-2xl animate-pulse mb-4 w-2/3" />
-        <div className="h-6 bg-white/5 rounded-xl animate-pulse mb-8 w-1/3" />
-        {[1,2,3].map(i => <div key={i} className="h-48 bg-white/5 rounded-2xl animate-pulse mb-4" />)}
+      <div className="min-h-screen bg-gray-950 text-white">
+        <div className="max-w-4xl mx-auto px-4 py-10">
+          <div className="h-12 bg-white/5 rounded-2xl animate-pulse mb-4 w-2/3" />
+          <div className="h-6 bg-white/5 rounded-xl animate-pulse mb-8 w-1/3" />
+          {[1,2,3].map(i => <div key={i} className="h-48 bg-white/5 rounded-2xl animate-pulse mb-4" />)}
+        </div>
       </div>
     )
   }
 
   if (!trip) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-10 text-center">
-        <p className="text-white/50">Trip not found.</p>
-        <Link to="/trips" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">← My Trips</Link>
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white/50">Trip not found.</p>
+          <Link to="/trips" className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block">← My Trips</Link>
+        </div>
       </div>
     )
   }
@@ -398,6 +402,7 @@ export default function TripDashboard() {
   const tripStart = trip.start_date ? new Date(trip.start_date) : null
 
   return (
+    <div className="min-h-screen bg-gray-950 text-white">
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
@@ -555,6 +560,7 @@ export default function TripDashboard() {
           onClose={() => { setDrawerDay(null); setDrawerSlot(null) }}
         />
       )}
+    </div>
     </div>
   )
 }
