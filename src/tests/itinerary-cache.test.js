@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { itineraryCacheKey } from '../pages/ItineraryResults.jsx'
+import { itineraryCacheKey, readCachedItinerary } from '../pages/ItineraryResults.jsx'
 
 const STORAGE_KEY = 'vtopia_active_itinerary'
 
@@ -161,5 +161,74 @@ describe('sessionStorage cache round-trip', () => {
 
     // days.length === 0 should not pass the cache restore guard
     expect(cached.itinerary.days.length > 0).toBe(false)
+  })
+})
+
+describe('readCachedItinerary', () => {
+  beforeEach(() => sessionStorage.clear())
+  afterEach(() => sessionStorage.clear())
+
+  it('returns null when sessionStorage is empty', () => {
+    expect(readCachedItinerary(makeAnswers())).toBeNull()
+  })
+
+  it('returns null when answers is null', () => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ itinerary: makeItinerary(), answers: makeAnswers() }))
+    expect(readCachedItinerary(null)).toBeNull()
+  })
+
+  it('returns the cached object when answers key matches', () => {
+    const answers = makeAnswers()
+    const itinerary = makeItinerary()
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ itinerary, answers, city: answers.city }))
+    const result = readCachedItinerary(answers)
+    expect(result).not.toBeNull()
+    expect(result.itinerary.headline).toBe('A Weekend in KC')
+  })
+
+  it('returns null when the cache key does not match (different city)', () => {
+    const stored = makeAnswers({ city: 'miami' })
+    const current = makeAnswers({ city: 'kansas-city' })
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ itinerary: makeItinerary(), answers: stored }))
+    expect(readCachedItinerary(current)).toBeNull()
+  })
+
+  it('returns null when the cache key does not match (different dates)', () => {
+    const stored = makeAnswers({ startDate: '2026-06-01', endDate: '2026-06-03' })
+    const current = makeAnswers({ startDate: '2026-07-10', endDate: '2026-07-13' })
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ itinerary: makeItinerary(), answers: stored }))
+    expect(readCachedItinerary(current)).toBeNull()
+  })
+
+  it('returns null when itinerary has no days (invalid cache)', () => {
+    const answers = makeAnswers()
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      itinerary: { headline: 'Bad', overview: '', days: [] },
+      answers,
+    }))
+    expect(readCachedItinerary(answers)).toBeNull()
+  })
+
+  it('returns null gracefully when storage contains corrupt JSON', () => {
+    sessionStorage.setItem(STORAGE_KEY, 'not-valid-json}}}')
+    expect(readCachedItinerary(makeAnswers())).toBeNull()
+  })
+
+  it('exposes itineraryId when present in cache', () => {
+    const answers = makeAnswers()
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      itinerary: makeItinerary(),
+      answers,
+      itineraryId: 'xyz-789',
+    }))
+    const result = readCachedItinerary(answers)
+    expect(result?.itineraryId).toBe('xyz-789')
+  })
+
+  it('matches cache despite different interests (interests excluded from key)', () => {
+    const stored = makeAnswers({ interests: ['food'] })
+    const current = makeAnswers({ interests: ['arts', 'sports', 'outdoors'] })
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ itinerary: makeItinerary(), answers: stored }))
+    expect(readCachedItinerary(current)).not.toBeNull()
   })
 })
