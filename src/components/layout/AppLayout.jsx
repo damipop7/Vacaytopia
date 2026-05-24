@@ -95,6 +95,9 @@ export default function AppLayout() {
           {user && (
             <NavLink to="/interests" label="Interests" active={location.pathname === '/interests'} />
           )}
+          {user && (
+            <NavLink to="/trips" label="My Trips" active={location.pathname.startsWith('/trips')} />
+          )}
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -197,6 +200,7 @@ export default function AppLayout() {
                   ? [{ to: '/world-cup', label: 'World Cup KC' }]
                   : []),
                 ...(user ? [{ to: '/interests', label: 'My interests' }] : []),
+                ...(user ? [{ to: '/trips',     label: 'My Trips' }] : []),
                 ...(user ? [{ to: '/profile',   label: 'Profile' }] : []),
               ].map(({ to, label }) => (
                 <Link key={to} to={to}

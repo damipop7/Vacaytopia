@@ -64,7 +64,7 @@ function SortableExpCard({ item, ...cardProps }) {
 
 // ── Add-experience search drawer ─────────────────────────────────────────────
 
-function AddExperienceDrawer({ tripId, dayNumber, timeSlot, onClose }) {
+function AddExperienceDrawer({ tripId, dayNumber, timeSlot, defaultTab = 'search', onClose }) {
   const [query, setQuery] = useState('')
   const { mutate: addExp, isPending } = useAddTripExperience(tripId)
 
@@ -86,7 +86,7 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, onClose }) {
 
   const [customName, setCustomName] = useState('')
   const [customType, setCustomType] = useState('other')
-  const [tab, setTab] = useState('search')
+  const [tab, setTab] = useState(defaultTab)
 
   function handleAdd(exp) {
     addExp({ experienceId: exp.id, dayNumber, timeSlot }, { onSuccess: onClose })
@@ -110,18 +110,24 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, onClose }) {
         </div>
 
         <div className="flex gap-2 mb-4">
-          {['search','custom'].map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                tab === t ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
-              }`}
-            >
-              {t === 'search' ? '🔍 Search Vtopia' : '✏️ Custom'}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => setTab('search')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              tab === 'search' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
+            }`}
+          >
+            🔍 Suggest from Vtopia
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('custom')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              tab === 'custom' ? 'bg-white/10 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'
+            }`}
+          >
+            ✏️ Add your own
+          </button>
         </div>
 
         {tab === 'search' && (
@@ -196,6 +202,7 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, onClose }) {
 // ── Day column ────────────────────────────────────────────────────────────────
 
 function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, onReorder, sensors, tripId, tripStart, trip }) {
+  // onAdd(day, slot, tab) — tab is 'search' | 'custom'
   const sharedCardProps = { myVotes, onVote, onApprove, onRemove, isOwner, tripStart, tripId, tripTitle: trip?.title ?? 'Vtopia Trip' }
 
   return (
@@ -275,21 +282,31 @@ function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove
                   </div>
                 )
               ) : (
-                <button
-                  type="button"
-                  onClick={() => onAdd(day, slot)}
-                  className="w-full py-3 border border-dashed border-white/10 hover:border-blue-500/30 hover:text-blue-400 rounded-xl text-xs text-white/30 transition flex items-center justify-center gap-1.5"
-                >
-                  <span className="text-base">+</span>
-                  Suggest an experience
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onAdd(day, slot, 'search')}
+                    className="py-3 border border-dashed border-blue-500/25 hover:border-blue-500/50 hover:bg-blue-500/5 rounded-xl text-xs text-blue-400/50 hover:text-blue-400 transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <span>🔍</span>
+                    <span>Suggest from Vtopia</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAdd(day, slot, 'custom')}
+                    className="py-3 border border-dashed border-white/10 hover:border-white/25 rounded-xl text-xs text-white/25 hover:text-white/50 transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <span>✏️</span>
+                    <span>Add your own</span>
+                  </button>
+                </div>
               )}
 
               {/* Allow adding another to a non-empty slot */}
               {slotExps.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => onAdd(day, slot)}
+                  onClick={() => onAdd(day, slot, 'search')}
                   className="mt-1 w-full text-[11px] text-white/20 hover:text-blue-400 transition text-center py-1"
                 >
                   + Add another to this slot
@@ -326,6 +343,7 @@ export default function TripDashboard() {
 
   const [drawerDay,  setDrawerDay]  = useState(null)
   const [drawerSlot, setDrawerSlot] = useState(null)
+  const [drawerTab,  setDrawerTab]  = useState('search')
   const [copied,     setCopied]     = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
   const [feedOpen,   setFeedOpen]   = useState(false)
@@ -530,7 +548,7 @@ export default function TripDashboard() {
               onVote={handleVote}
               onApprove={handleApprove}
               onRemove={(id) => remove(id)}
-              onAdd={(d, slot) => { setDrawerDay(d); setDrawerSlot(slot) }}
+              onAdd={(d, slot, tab = 'search') => { setDrawerDay(d); setDrawerSlot(slot); setDrawerTab(tab) }}
               onReorder={handleReorder}
               sensors={sensors}
               tripId={tripId}
@@ -557,6 +575,7 @@ export default function TripDashboard() {
           tripId={tripId}
           dayNumber={drawerDay}
           timeSlot={drawerSlot}
+          defaultTab={drawerTab}
           onClose={() => { setDrawerDay(null); setDrawerSlot(null) }}
         />
       )}
