@@ -1,7 +1,21 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useTrip } from '../hooks/useTrip'
-import { useTripExperiences, useMyVotes, useVoteTripExperience, useApproveTripExperience, useRemoveTripExperience, useAddTripExperience } from '../hooks/useTripExperiences'
+import { useTripExperiences, useMyVotes, useVoteTripExperience, useApproveTripExperience, useRemoveTripExperience, useAddTripExperience, useUpdateTripExperienceOrder } from '../hooks/useTripExperiences'
 import { useTripRealtime } from '../hooks/useTripRealtime'
 import { useAuthStore } from '../store/authStore'
 import { supabase } from '../lib/supabase'
@@ -15,6 +29,35 @@ import AddToCalendarButton from '../components/trips/AddToCalendarButton'
 const SLOTS  = ['morning', 'afternoon', 'evening', 'night']
 const SLOT_ICONS = { morning: '🌅', afternoon: '☀️', evening: '🌙', night: '🌃' }
 const SLOT_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' }
+
+// ── Sortable card wrapper ─────────────────────────────────────────────────────
+
+function SortableExpCard({ item, ...cardProps }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
+      {...attributes}
+      className="relative group/drag"
+    >
+      {/* drag handle — visible on hover */}
+      <button
+        type="button"
+        {...listeners}
+        className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 p-1.5 text-white/20 hover:text-white/50 opacity-0 group-hover/drag:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
+        aria-label="Drag to reorder"
+      >
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
+          <circle cx="2.5" cy="2"  r="1.5"/><circle cx="7.5" cy="2"  r="1.5"/>
+          <circle cx="2.5" cy="7"  r="1.5"/><circle cx="7.5" cy="7"  r="1.5"/>
+          <circle cx="2.5" cy="12" r="1.5"/><circle cx="7.5" cy="12" r="1.5"/>
+        </svg>
+      </button>
+      <ExperienceSlotCard item={item} {...cardProps} />
+    </div>
+  )
+}
 
 // ── Add-experience search drawer ─────────────────────────────────────────────
 
@@ -149,7 +192,9 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, onClose }) {
 
 // ── Day column ────────────────────────────────────────────────────────────────
 
-function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, tripId, tripStart, trip }) {
+function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, onReorder, sensors, tripId, tripStart, trip }) {
+  const sharedCardProps = { myVotes, onVote, onApprove, onRemove, isOwner, tripStart, tripId, tripTitle: trip?.title ?? 'Vtopia Trip' }
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
       {/* Day header */}
@@ -183,22 +228,49 @@ function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove
               </div>
 
               {slotExps.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {slotExps.map(item => (
-                    <ExperienceSlotCard
-                      key={item.id}
-                      item={item}
-                      myVote={myVotes?.[item.id]}
-                      onVote={(v) => onVote(item.id, v)}
-                      onApprove={(id, status) => onApprove(id, status)}
-                      onRemove={onRemove}
-                      isOwner={isOwner}
-                      tripStart={tripStart}
-                      tripId={tripId}
-                      tripTitle={trip?.title ?? 'Vtopia Trip'}
-                    />
-                  ))}
-                </div>
+                slotExps.length > 1 ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={event => onReorder(slotExps, event)}
+                  >
+                    <SortableContext items={slotExps.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                      <div className="flex flex-col gap-2">
+                        {slotExps.map(item => (
+                          <SortableExpCard
+                            key={item.id}
+                            item={item}
+                            myVote={myVotes?.[item.id]}
+                            onVote={(v) => onVote(item.id, v)}
+                            onApprove={(id, status) => onApprove(id, status)}
+                            onRemove={onRemove}
+                            isOwner={isOwner}
+                            tripStart={tripStart}
+                            tripId={tripId}
+                            tripTitle={trip?.title ?? 'Vtopia Trip'}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {slotExps.map(item => (
+                      <ExperienceSlotCard
+                        key={item.id}
+                        item={item}
+                        myVote={myVotes?.[item.id]}
+                        onVote={(v) => onVote(item.id, v)}
+                        onApprove={(id, status) => onApprove(id, status)}
+                        onRemove={onRemove}
+                        isOwner={isOwner}
+                        tripStart={tripStart}
+                        tripId={tripId}
+                        tripTitle={trip?.title ?? 'Vtopia Trip'}
+                      />
+                    ))}
+                  </div>
+                )
               ) : (
                 <button
                   type="button"
@@ -244,6 +316,10 @@ export default function TripDashboard() {
   const { mutate: vote }    = useVoteTripExperience(tripId)
   const { mutate: approve } = useApproveTripExperience(tripId)
   const { mutate: remove }  = useRemoveTripExperience(tripId)
+  const { mutate: reorder } = useUpdateTripExperienceOrder(tripId)
+
+  // 8px activation distance prevents accidental drags when tapping vote buttons
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const [drawerDay,  setDrawerDay]  = useState(null)
   const [drawerSlot, setDrawerSlot] = useState(null)
@@ -285,6 +361,15 @@ export default function TripDashboard() {
 
   function handleApprove(id, status) {
     approve({ tripExperienceId: id, status })
+  }
+
+  function handleReorder(slotExps, { active, over }) {
+    if (!over || active.id === over.id) return
+    const oldIndex = slotExps.findIndex(e => e.id === active.id)
+    const newIndex = slotExps.findIndex(e => e.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = arrayMove(slotExps, oldIndex, newIndex)
+    reorder(reordered.map((exp, i) => ({ id: exp.id, sortOrder: i })))
   }
 
   if (tripLoading) {
@@ -407,6 +492,8 @@ export default function TripDashboard() {
               onApprove={handleApprove}
               onRemove={(id) => remove(id)}
               onAdd={(d, slot) => { setDrawerDay(d); setDrawerSlot(slot) }}
+              onReorder={handleReorder}
+              sensors={sensors}
               tripId={tripId}
               tripStart={tripStart}
               trip={trip}

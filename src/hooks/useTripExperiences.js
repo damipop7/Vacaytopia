@@ -194,16 +194,37 @@ export function useRemoveTripExperience(tripId) {
   })
 }
 
+// updates: [{ id, sortOrder }]
 export function useUpdateTripExperienceOrder(tripId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, dayNumber, timeSlot, sortOrder }) => {
-      const { error } = await supabase
-        .from('trip_experiences')
-        .update({ day_number: dayNumber, time_slot: timeSlot, sort_order: sortOrder })
-        .eq('id', id)
-      if (error) throw error
+    mutationFn: async (updates) => {
+      await Promise.all(
+        updates.map(({ id, sortOrder }) =>
+          supabase
+            .from('trip_experiences')
+            .update({ sort_order: sortOrder })
+            .eq('id', id)
+            .then(({ error }) => { if (error) throw error })
+        )
+      )
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trip-experiences', tripId] }),
+    onMutate: async (updates) => {
+      await qc.cancelQueries({ queryKey: ['trip-experiences', tripId] })
+      const previous = qc.getQueryData(['trip-experiences', tripId])
+      const orderMap = Object.fromEntries(updates.map(u => [u.id, u.sortOrder]))
+      qc.setQueryData(['trip-experiences', tripId], old =>
+        old
+          ? [...old]
+              .map(exp => orderMap[exp.id] !== undefined ? { ...exp, sort_order: orderMap[exp.id] } : exp)
+              .sort((a, b) => (a.day_number - b.day_number) || (a.sort_order - b.sort_order))
+          : old
+      )
+      return { previous }
+    },
+    onError: (_, __, ctx) => {
+      qc.setQueryData(['trip-experiences', tripId], ctx?.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['trip-experiences', tripId] }),
   })
 }
