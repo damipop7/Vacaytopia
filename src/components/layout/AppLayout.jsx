@@ -146,7 +146,7 @@ export default function AppLayout() {
                     </div>
 
                     <DropItem label="My Profile"       icon={<Settings size={14} />}     onClick={() => handleNavItem(() => navigate('/profile'))} />
-                    <DropItem label="My Bookings"       icon={<Heart size={14} />}         onClick={() => handleNavItem(() => navigate('/profile', { state: { tab: 'history' } }))} />
+                    <DropItem label="Booking History"    icon={<Heart size={14} />}         onClick={() => handleNavItem(() => navigate('/profile', { state: { tab: 'history' } }))} />
                     <DropItem label="Personalise feed" icon={<Sliders size={14} />}       onClick={() => handleNavItem(() => navigate('/interests'))} />
 
                     {isAdmin && (

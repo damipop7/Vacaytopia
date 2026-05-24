@@ -1,9 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-
-const AVATAR_COLORS = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16']
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { useImportItineraryAsGroupTrip } from "../hooks/useTrip";
 import ExperienceCard from "../components/cards/ExperienceCard";
 import { useWeather } from "../hooks/useWeather";
 import { bookingCityUrl, uberDeepLink, lyftDeepLink } from "../lib/affiliates.config";
@@ -362,9 +360,11 @@ export default function ItineraryResults() {
   );
   const [streamedHeadline, setStreamedHeadline] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [planningTrip, setPlanningTrip] = useState(false);
-  const [planError, setPlanError]     = useState('');
+  const [planError, setPlanError] = useState('');
   const hasFetched = useRef(false);
+
+  const { mutate: importItinerary, isPending: planningTrip } = useImportItineraryAsGroupTrip();
+  const isSolo = answers?.travelerGroup === 'solo';
   const { weather } = useWeather(answers?.city);
 
   const nights = answers
@@ -556,78 +556,20 @@ export default function ItineraryResults() {
     }
   }
 
-  async function handlePlanWithFriends() {
-    if (planningTrip) return
-    setPlanningTrip(true)
+  function handlePlanWithFriends() {
     setPlanError('')
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { navigate('/auth', { state: { from: '/itinerary/results', answers } }); return }
-
-      const { data: profile } = await supabase.from('profiles').select('first_name').eq('id', user.id).single()
-      const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]
-
-      // Create the trip
-      const { data: trip, error: tripErr } = await supabase
-        .from('trips')
-        .insert({
-          title:       itinerary.headline || `${CITY_LABELS[answers.city] || 'KC'} Trip`,
-          destination: CITY_LABELS[answers.city] || 'Kansas City',
-          start_date:  answers.startDate || null,
-          end_date:    answers.endDate   || null,
-          trip_type:   'group',
-          created_by:  user.id,
-        })
-        .select()
-        .single()
-      if (tripErr) throw tripErr
-
-      // Add owner as first member
-      await supabase.from('trip_members').insert({
-        trip_id: trip.id, user_id: user.id,
-        display_name: profile?.first_name || user.email?.split('@')[0] || 'Traveler',
-        avatar_color: avatarColor, role: 'owner', contribution_status: 'paid',
-      })
-
-      // Batch-import all itinerary time slots as suggested experiences
-      const rows = []
-      for (const day of (itinerary.days ?? [])) {
-        ['morning', 'afternoon', 'evening'].forEach((slot, sortIdx) => {
-          const data = day[slot]
-          if (!data?.title) return
-          const isUuid = UUID_RE.test(data.experienceId ?? '')
-          rows.push({
-            trip_id:      trip.id,
-            experience_id: isUuid ? data.experienceId : null,
-            custom_name:  isUuid ? null : data.title,
-            custom_type:  isUuid ? null : 'other',
-            added_by:     user.id,
-            day_number:   day.day,
-            time_slot:    slot,
-            status:       'suggested',
-            notes:        data.tip || null,
-            sort_order:   sortIdx,
-          })
-        })
+    importItinerary(
+      {
+        itinerary,
+        cityLabel:  CITY_LABELS[answers.city],
+        startDate:  answers.startDate,
+        endDate:    answers.endDate,
+      },
+      {
+        onSuccess: (trip) => navigate(`/trips/${trip.id}`),
+        onError:   (err)  => setPlanError(err.message || 'Could not create trip. Please try again.'),
       }
-      if (rows.length > 0) {
-        const { error: expErr } = await supabase.from('trip_experiences').insert(rows)
-        if (expErr) console.warn('Partial import failure:', expErr)
-      }
-
-      // Fire-and-forget activity log
-      supabase.from('trip_activity').insert({
-        trip_id: trip.id, user_id: user.id,
-        display_name: profile?.first_name || 'You',
-        activity_type: 'member_joined',
-        payload: { role: 'owner', source: 'itinerary' },
-      })
-
-      navigate(`/trips/${trip.id}`)
-    } catch (err) {
-      setPlanError(err.message || 'Could not create trip. Please try again.')
-      setPlanningTrip(false)
-    }
+    )
   }
 
   function handleRegenerate() {
@@ -699,14 +641,16 @@ export default function ItineraryResults() {
               Re-optimize plan
             </button>
             <Link to={"/browse?city=" + answers.city} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition">Browse Experiences</Link>
-            <button
-              type="button"
-              onClick={handlePlanWithFriends}
-              disabled={planningTrip}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl text-sm font-semibold transition flex items-center gap-1.5"
-            >
-              {planningTrip ? '⏳ Creating trip…' : '👥 Plan with friends'}
-            </button>
+            {!isSolo && (
+              <button
+                type="button"
+                onClick={handlePlanWithFriends}
+                disabled={planningTrip}
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl text-sm font-semibold transition flex items-center gap-1.5"
+              >
+                {planningTrip ? '⏳ Creating trip…' : '👥 Plan with friends'}
+              </button>
+            )}
             <Link to="/itinerary" className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">New itinerary</Link>
           </div>
         </div>
@@ -737,25 +681,27 @@ export default function ItineraryResults() {
             <CostSummary days={itinerary.days} />
             {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
 
-            {/* Solo → group upgrade CTA */}
-            <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6 flex flex-col sm:flex-row items-center gap-5">
-              <div className="text-4xl flex-shrink-0">👥</div>
-              <div className="flex-1 text-center sm:text-left">
-                <h3 className="font-bold text-white text-lg mb-1">Bring your crew</h3>
-                <p className="text-white/50 text-sm">Turn this into a shared group trip — all {itinerary.days?.length ?? 0} days imported, ready to share and vote on.</p>
+            {/* Solo → group upgrade CTA — hidden for solo travelers */}
+            {!isSolo && (
+              <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6 flex flex-col sm:flex-row items-center gap-5">
+                <div className="text-4xl flex-shrink-0">👥</div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="font-bold text-white text-lg mb-1">Bring your crew</h3>
+                  <p className="text-white/50 text-sm">Turn this into a shared group trip — all {itinerary.days?.length ?? 0} days imported instantly, ready to share and vote on.</p>
+                </div>
+                <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handlePlanWithFriends}
+                    disabled={planningTrip}
+                    className="px-5 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl font-semibold text-sm transition whitespace-nowrap"
+                  >
+                    {planningTrip ? '⏳ Creating trip…' : 'Plan with friends →'}
+                  </button>
+                  {planError && <p className="text-red-400 text-xs text-center max-w-[200px]">{planError}</p>}
+                </div>
               </div>
-              <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={handlePlanWithFriends}
-                  disabled={planningTrip}
-                  className="px-5 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl font-semibold text-sm transition whitespace-nowrap"
-                >
-                  {planningTrip ? '⏳ Creating trip…' : 'Plan with friends →'}
-                </button>
-                {planError && <p className="text-red-400 text-xs text-center max-w-[200px]">{planError}</p>}
-              </div>
-            </div>
+            )}
 
             <BookableExperiences cityKey={answers.city} interests={answers.interests || []} />
           </div>
