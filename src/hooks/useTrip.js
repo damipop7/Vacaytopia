@@ -8,6 +8,8 @@ const AVATAR_COLORS = [
 ]
 function randomColor() { return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)] }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export function useMyTrips() {
@@ -238,5 +240,96 @@ export function usePledgeBudget(tripId) {
       qc.invalidateQueries({ queryKey: ['trip', tripId] })
       qc.invalidateQueries({ queryKey: ['trips'] })
     },
+  })
+}
+
+// ── Itinerary hooks ──────────────────────────────────────────────────────────
+
+export function useMyItineraries() {
+  const user = useAuthStore(s => s.user)
+  return useQuery({
+    queryKey: ['my-itineraries', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('itineraries')
+        .select('id, city, start_date, end_date, budget, itinerary_data, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      if (error) throw error
+      return data ?? []
+    },
+    enabled: !!user?.id,
+  })
+}
+
+/** Creates a group trip from an AI itinerary and batch-imports all time slots. */
+export function useImportItineraryAsGroupTrip() {
+  const qc   = useQueryClient()
+  const user = useAuthStore(s => s.user)
+
+  return useMutation({
+    mutationFn: async ({ itinerary, cityLabel, startDate, endDate }) => {
+      const { data: profile } = await supabase.from('profiles').select('first_name').eq('id', user.id).single()
+
+      const { data: trip, error: tripErr } = await supabase
+        .from('trips')
+        .insert({
+          title:       itinerary.headline || `${cityLabel || 'KC'} Group Trip`,
+          destination: cityLabel || 'Kansas City',
+          start_date:  startDate || null,
+          end_date:    endDate   || null,
+          trip_type:   'group',
+          created_by:  user.id,
+        })
+        .select()
+        .single()
+      if (tripErr) throw tripErr
+
+      await supabase.from('trip_members').insert({
+        trip_id:      trip.id,
+        user_id:      user.id,
+        display_name: profile?.first_name || user.email?.split('@')[0] || 'Traveler',
+        avatar_color: randomColor(),
+        role:         'owner',
+        contribution_status: 'paid',
+      })
+
+      const rows = []
+      for (const day of (itinerary.days ?? [])) {
+        ;['morning', 'afternoon', 'evening'].forEach((slot, sortIdx) => {
+          const slotData = day[slot]
+          if (!slotData?.title) return
+          const isUuid = UUID_RE.test(slotData.experienceId ?? '')
+          rows.push({
+            trip_id:       trip.id,
+            experience_id: isUuid ? slotData.experienceId : null,
+            custom_name:   isUuid ? null : slotData.title,
+            custom_type:   isUuid ? null : 'other',
+            added_by:      user.id,
+            day_number:    day.day,
+            time_slot:     slot,
+            status:        'suggested',
+            notes:         slotData.tip || null,
+            sort_order:    sortIdx,
+          })
+        })
+      }
+      if (rows.length > 0) {
+        const { error: expErr } = await supabase.from('trip_experiences').insert(rows)
+        if (expErr) console.warn('Partial import failure:', expErr)
+      }
+
+      supabase.from('trip_activity').insert({
+        trip_id:       trip.id,
+        user_id:       user.id,
+        display_name:  profile?.first_name || 'You',
+        activity_type: 'member_joined',
+        payload:       { role: 'owner', source: 'itinerary_import' },
+      })
+
+      return trip
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['trips'] }),
   })
 }

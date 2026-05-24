@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useImportItineraryAsGroupTrip } from "../hooks/useTrip";
 import ExperienceCard from "../components/cards/ExperienceCard";
 import { useWeather } from "../hooks/useWeather";
 import { bookingCityUrl, uberDeepLink, lyftDeepLink } from "../lib/affiliates.config";
@@ -359,7 +360,11 @@ export default function ItineraryResults() {
   );
   const [streamedHeadline, setStreamedHeadline] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [planError, setPlanError] = useState('');
   const hasFetched = useRef(false);
+
+  const { mutate: importItinerary, isPending: planningTrip } = useImportItineraryAsGroupTrip();
+  const isSolo = answers?.travelerGroup === 'solo';
   const { weather } = useWeather(answers?.city);
 
   const nights = answers
@@ -551,6 +556,22 @@ export default function ItineraryResults() {
     }
   }
 
+  function handlePlanWithFriends() {
+    setPlanError('')
+    importItinerary(
+      {
+        itinerary,
+        cityLabel:  CITY_LABELS[answers.city],
+        startDate:  answers.startDate,
+        endDate:    answers.endDate,
+      },
+      {
+        onSuccess: (trip) => navigate(`/trips/${trip.id}`),
+        onError:   (err)  => setPlanError(err.message || 'Could not create trip. Please try again.'),
+      }
+    )
+  }
+
   function handleRegenerate() {
     // Clear cache so the new generation is stored fresh
     try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
@@ -620,19 +641,16 @@ export default function ItineraryResults() {
               Re-optimize plan
             </button>
             <Link to={"/browse?city=" + answers.city} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition">Browse Experiences</Link>
-            <Link
-              to="/trips/new"
-              state={{ prefill: {
-                title:     itinerary.headline ?? '',
-                startDate: answers.startDate  ?? '',
-                endDate:   answers.endDate    ?? '',
-                budgetTier: answers.budget    ?? 'mid',
-                travelers: { solo: 2, couple: 2, friends: 4, family: 4 }[answers.traveler] ?? 2,
-              }}}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-xl text-sm font-semibold transition flex items-center gap-1.5"
-            >
-              👥 Plan with friends
-            </Link>
+            {!isSolo && (
+              <button
+                type="button"
+                onClick={handlePlanWithFriends}
+                disabled={planningTrip}
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl text-sm font-semibold transition flex items-center gap-1.5"
+              >
+                {planningTrip ? '⏳ Creating trip…' : '👥 Plan with friends'}
+              </button>
+            )}
             <Link to="/itinerary" className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">New itinerary</Link>
           </div>
         </div>
@@ -663,27 +681,27 @@ export default function ItineraryResults() {
             <CostSummary days={itinerary.days} />
             {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
 
-            {/* Solo → group upgrade CTA */}
-            <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6 flex flex-col sm:flex-row items-center gap-5">
-              <div className="text-4xl flex-shrink-0">👥</div>
-              <div className="flex-1 text-center sm:text-left">
-                <h3 className="font-bold text-white text-lg mb-1">Bring your crew</h3>
-                <p className="text-white/50 text-sm">Turn this into a shared group trip — invite friends, vote on experiences, and track the budget together.</p>
+            {/* Solo → group upgrade CTA — hidden for solo travelers */}
+            {!isSolo && (
+              <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6 flex flex-col sm:flex-row items-center gap-5">
+                <div className="text-4xl flex-shrink-0">👥</div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="font-bold text-white text-lg mb-1">Bring your crew</h3>
+                  <p className="text-white/50 text-sm">Turn this into a shared group trip — all {itinerary.days?.length ?? 0} days imported instantly, ready to share and vote on.</p>
+                </div>
+                <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handlePlanWithFriends}
+                    disabled={planningTrip}
+                    className="px-5 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-60 rounded-xl font-semibold text-sm transition whitespace-nowrap"
+                  >
+                    {planningTrip ? '⏳ Creating trip…' : 'Plan with friends →'}
+                  </button>
+                  {planError && <p className="text-red-400 text-xs text-center max-w-[200px]">{planError}</p>}
+                </div>
               </div>
-              <Link
-                to="/trips/new"
-                state={{ prefill: {
-                  title:     itinerary.headline ?? '',
-                  startDate: answers.startDate  ?? '',
-                  endDate:   answers.endDate    ?? '',
-                  budgetTier: answers.budget    ?? 'mid',
-                  travelers: { solo: 2, couple: 2, friends: 4, family: 4 }[answers.traveler] ?? 2,
-                }}}
-                className="flex-shrink-0 px-5 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-semibold text-sm transition whitespace-nowrap"
-              >
-                Plan with friends →
-              </Link>
-            </div>
+            )}
 
             <BookableExperiences cityKey={answers.city} interests={answers.interests || []} />
           </div>
