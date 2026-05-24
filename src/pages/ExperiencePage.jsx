@@ -5,6 +5,7 @@ import { useExperience } from '../hooks/useRecommendations'
 import { useWishlist } from '../hooks/useWishlist'
 import { PriceTier, getPhotoUrl, pickHighlights } from '../components/cards/ExperienceCard'
 import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
+import { getTodayHours, isOpenNow, formatHoursRange } from '../lib/openingHours'
 import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
 import ExperienceConcierge from '../components/ui/ExperienceConcierge'
 import { usePersonalizedBlurb } from '../hooks/usePersonalizedBlurb'
@@ -621,7 +622,31 @@ function ExperiencePageInner({ id }) {
                 <span className="flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{exp.city}</span>
                 {exp.duration_label && <><span>·</span><span className="flex items-center gap-1"><Clock size={14} aria-hidden="true" />{exp.duration_label}</span></>}
                 {exp.max_guests && isBookable && <><span>·</span><span className="flex items-center gap-1"><Users size={14} aria-hidden="true" />Max {exp.max_guests}</span></>}
-                {exp.rating > 0 && <><span>·</span><span className="text-gold-brand font-semibold">★ {exp.rating} ({exp.review_count?.toLocaleString()} reviews)</span></>}
+                {/* Opening hours badge */}
+                {(() => {
+                  const openStatus = isOpenNow(exp.hours)
+                  if (openStatus === null) return null
+                  const todayRange  = getTodayHours(exp.hours)
+                  const hoursLabel  = formatHoursRange(todayRange)
+                  return (
+                    <>
+                      <span>·</span>
+                      <span className={`flex items-center gap-1 font-medium ${openStatus ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${openStatus ? 'bg-green-500' : 'bg-red-400'}`} aria-hidden="true" />
+                        {openStatus ? 'Open now' : 'Closed'}
+                      </span>
+                      {hoursLabel && hoursLabel !== 'Closed today' && (
+                        <span className="text-gray-400">{hoursLabel}</span>
+                      )}
+                    </>
+                  )
+                })()}
+                {/* Google rating — preferred over vtopia rating when available */}
+                {exp.google_rating > 0 ? (
+                  <><span>·</span><span className="text-gold-brand font-semibold">★ {Number(exp.google_rating).toFixed(1)}{exp.google_review_count > 0 && <span className="text-gray-400 font-normal"> ({Number(exp.google_review_count).toLocaleString()} Google reviews)</span>}</span></>
+                ) : exp.rating > 0 ? (
+                  <><span>·</span><span className="text-gold-brand font-semibold">★ {exp.rating} ({exp.review_count?.toLocaleString()} reviews)</span></>
+                ) : null}
               </div>
 
               {/* Price tier badge (left column, visible on mobile before right panel) */}
