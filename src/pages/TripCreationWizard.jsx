@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useCreateTrip } from '../hooks/useTrip'
+
+// Map quiz traveler type → wizard traveler count
+const TRAVELER_FROM_TYPE = { solo: 2, couple: 2, friends: 4, family: 4 }
 
 const TRAVELER_OPTIONS = [
   { id: 2,   label: '2 travelers' },
@@ -261,17 +264,20 @@ const STEPS = ['Basics', 'Budget', 'Invite']
 
 export default function TripCreationWizard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { mutate: createTrip, isPending, error } = useCreateTrip()
+
+  const prefill = location.state?.prefill ?? {}
 
   const [step, setStep] = useState(0)
   const [createdTrip, setCreatedTrip] = useState(null)
   const [form, setForm] = useState({
-    title: '',
-    startDate: '',
-    endDate: '',
-    travelers: 2,
-    budgetTier: 'mid',
-    totalBudget: '',
+    title:        prefill.title       ?? '',
+    startDate:    prefill.startDate   ?? '',
+    endDate:      prefill.endDate     ?? '',
+    travelers:    prefill.travelers   ?? 2,
+    budgetTier:   prefill.budgetTier  ?? 'mid',
+    totalBudget:  '',
     budgetMethod: 'pledge',
   })
 

@@ -614,6 +614,19 @@ export default function ItineraryResults() {
               Re-optimize plan
             </button>
             <Link to={"/browse?city=" + answers.city} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition">Browse Experiences</Link>
+            <Link
+              to="/trips/new"
+              state={{ prefill: {
+                title:     itinerary.headline ?? '',
+                startDate: answers.startDate  ?? '',
+                endDate:   answers.endDate    ?? '',
+                budgetTier: answers.budget    ?? 'mid',
+                travelers: { solo: 2, couple: 2, friends: 4, family: 4 }[answers.traveler] ?? 2,
+              }}}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-xl text-sm font-semibold transition flex items-center gap-1.5"
+            >
+              👥 Plan with friends
+            </Link>
             <Link to="/itinerary" className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-xl text-sm transition">New itinerary</Link>
           </div>
         </div>
@@ -643,6 +656,29 @@ export default function ItineraryResults() {
             <WeatherStrip citySlug={answers.city} />
             <CostSummary days={itinerary.days} />
             {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
+
+            {/* Solo → group upgrade CTA */}
+            <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6 flex flex-col sm:flex-row items-center gap-5">
+              <div className="text-4xl flex-shrink-0">👥</div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="font-bold text-white text-lg mb-1">Bring your crew</h3>
+                <p className="text-white/50 text-sm">Turn this into a shared group trip — invite friends, vote on experiences, and track the budget together.</p>
+              </div>
+              <Link
+                to="/trips/new"
+                state={{ prefill: {
+                  title:     itinerary.headline ?? '',
+                  startDate: answers.startDate  ?? '',
+                  endDate:   answers.endDate    ?? '',
+                  budgetTier: answers.budget    ?? 'mid',
+                  travelers: { solo: 2, couple: 2, friends: 4, family: 4 }[answers.traveler] ?? 2,
+                }}}
+                className="flex-shrink-0 px-5 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-semibold text-sm transition whitespace-nowrap"
+              >
+                Plan with friends →
+              </Link>
+            </div>
+
             <BookableExperiences cityKey={answers.city} interests={answers.interests || []} />
           </div>
         )}
