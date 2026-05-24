@@ -84,42 +84,57 @@ export function useCreateTrip() {
 
   return useMutation({
     mutationFn: async ({ title, destination = 'Kansas City', startDate, endDate, tripType = 'solo', totalBudgetCents = 0 }) => {
-      const { data: trip, error } = await supabase
-        .from('trips')
-        .insert({
-          title,
-          destination,
-          start_date: startDate || null,
-          end_date: endDate || null,
-          trip_type: tripType,
-          total_budget_cents: totalBudgetCents,
-          created_by: user.id,
+      // Cancel in-flight requests after 12s so the button never freezes indefinitely
+      const ctrl      = new AbortController()
+      const timeoutId = setTimeout(() => ctrl.abort(), 12_000)
+
+      try {
+        const { data: trip, error } = await supabase
+          .from('trips')
+          .insert({
+            title,
+            destination,
+            start_date: startDate || null,
+            end_date: endDate || null,
+            trip_type: tripType,
+            total_budget_cents: totalBudgetCents,
+            created_by: user.id,
+          })
+          .select()
+          .single()
+          .abortSignal(ctrl.signal)
+        if (error) throw error
+
+        const profile = useAuthStore.getState().profile
+        const { error: memberErr } = await supabase
+          .from('trip_members')
+          .insert({
+            trip_id: trip.id,
+            user_id: user.id,
+            display_name: profile?.first_name || user.email?.split('@')[0] || 'Traveler',
+            avatar_color: randomColor(),
+            role: 'owner',
+            contribution_status: 'paid',
+          })
+          .abortSignal(ctrl.signal)
+        if (memberErr) throw memberErr
+
+        // Non-critical activity log — fire and forget so it never blocks the mutation
+        supabase.from('trip_activity').insert({
+          trip_id: trip.id,
+          user_id: user.id,
+          display_name: profile?.first_name || 'You',
+          activity_type: 'member_joined',
+          payload: { role: 'owner' },
         })
-        .select()
-        .single()
-      if (error) throw error
 
-      // Creator automatically becomes owner member
-      const profile = useAuthStore.getState().profile
-      const { error: memberErr } = await supabase.from('trip_members').insert({
-        trip_id: trip.id,
-        user_id: user.id,
-        display_name: profile?.first_name || user.email?.split('@')[0] || 'Traveler',
-        avatar_color: randomColor(),
-        role: 'owner',
-        contribution_status: 'paid',
-      })
-      if (memberErr) throw memberErr
-
-      await supabase.from('trip_activity').insert({
-        trip_id: trip.id,
-        user_id: user.id,
-        display_name: profile?.first_name || 'You',
-        activity_type: 'member_joined',
-        payload: { role: 'owner' },
-      })
-
-      return trip
+        return trip
+      } catch (err) {
+        if (ctrl.signal.aborted) throw new Error('Connection timed out — please try again.')
+        throw err
+      } finally {
+        clearTimeout(timeoutId)
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trips'] }),
   })
