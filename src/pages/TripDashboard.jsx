@@ -1,6 +1,7 @@
 import { useState, useMemo, lazy, Suspense } from 'react'
 
-const TripMap = lazy(() => import('../components/trips/TripMap'))
+const TripMap          = lazy(() => import('../components/trips/TripMap'))
+const TripCalendarView = lazy(() => import('../components/trips/TripCalendarView'))
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   DndContext,
@@ -479,8 +480,9 @@ export default function TripDashboard() {
       {/* View toggle */}
       <div className="flex gap-1.5 mb-5">
         {[
-          { id: 'timeline', label: '📅 Timeline' },
-          { id: 'map',      label: '🗺️ Map'      },
+          { id: 'timeline',  label: '📅 Timeline' },
+          { id: 'calendar',  label: '📆 Calendar' },
+          { id: 'map',       label: '🗺️ Map'      },
         ].map(v => (
           <button
             key={v.id}
@@ -502,6 +504,10 @@ export default function TripDashboard() {
         <div className="flex flex-col gap-4">
           {[1,2,3].map(i => <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse" />)}
         </div>
+      ) : view === 'calendar' ? (
+        <Suspense fallback={<div className="h-64 bg-white/5 rounded-2xl animate-pulse" />}>
+          <TripCalendarView days={days} experiences={experiences ?? []} />
+        </Suspense>
       ) : view === 'map' ? (
         <Suspense fallback={<div className="h-64 bg-white/5 rounded-2xl animate-pulse" />}>
           <TripMap experiences={experiences ?? []} />
