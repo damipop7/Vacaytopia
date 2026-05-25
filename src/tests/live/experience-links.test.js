@@ -169,18 +169,34 @@ describe('Experience website links (LIVE)', () => {
     console.log(`Checking ${cases.length} URLs across ${experiences.length} experiences…`)
 
     const results  = await checkAll(cases)
-    const broken   = results.filter(r => !r.ok)
     const verified = results.filter(r => r.ok && r.linkStatus === 'unverified')
+
+    // 403/405: server is reachable but blocks bots — likely fine for real users
+    const botBlocked = results.filter(r => r.status === 403 || r.status === 405)
+    // Truly dead: 404, 4xx (not 403/405), 5xx, TIMEOUT, fetch failed
+    const dead = results.filter(r =>
+      !r.ok &&
+      r.status !== 403 &&
+      r.status !== 405
+    )
 
     if (verified.length > 0) {
       console.log(
-        `\n[Info] ${verified.length} links are responding OK but still marked "unverified" in admin.` +
+        `\n[Info] ${verified.length} links respond OK but are still marked "unverified" in admin.` +
         ' Consider marking them verified at /admin/links.\n'
       )
     }
 
-    if (broken.length > 0) {
-      const report = broken
+    if (botBlocked.length > 0) {
+      console.warn(
+        `\n[Warning] ${botBlocked.length} URL(s) returned 403/405 — likely bot-blocking, fine for real users.\n` +
+        `  Verify these manually before marking broken:\n` +
+        botBlocked.map(b => `  • [${b.city}] ${b.title} → ${b.field}: ${b.url}`).join('\n') + '\n'
+      )
+    }
+
+    if (dead.length > 0) {
+      const report = dead
         .map(b =>
           `  • [${b.city}] ${b.title}\n` +
           `    Field: ${b.field}\n` +
@@ -191,7 +207,7 @@ describe('Experience website links (LIVE)', () => {
         .join('\n\n')
 
       expect.fail(
-        `${broken.length} broken experience link(s) — users are hitting dead CTAs:\n\n${report}\n\n` +
+        `${dead.length} dead experience link(s) — users are hitting broken CTAs:\n\n${report}\n\n` +
         `Mark each as "broken" at https://www.vtopia.world/admin/links to hide them from users.`
       )
     }
