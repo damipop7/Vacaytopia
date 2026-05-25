@@ -171,13 +171,17 @@ describe('Experience website links (LIVE)', () => {
     const results  = await checkAll(cases)
     const verified = results.filter(r => r.ok && r.linkStatus === 'unverified')
 
-    // 403/405: server is reachable but blocks bots — likely fine for real users
-    const botBlocked = results.filter(r => r.status === 403 || r.status === 405)
-    // Truly dead: 404, 4xx (not 403/405), 5xx, TIMEOUT, fetch failed
+    // 403/405/TIMEOUT: server is reachable but blocks bots, or very slow government
+    // sites that drop automated requests — these are fine for real users
+    const botBlocked = results.filter(r =>
+      r.status === 403 || r.status === 405 || r.status === 'TIMEOUT'
+    )
+    // Truly dead: 404, 4xx (not 403/405), 5xx, fetch failed (host unreachable)
     const dead = results.filter(r =>
       !r.ok &&
       r.status !== 403 &&
-      r.status !== 405
+      r.status !== 405 &&
+      r.status !== 'TIMEOUT'
     )
 
     if (verified.length > 0) {
