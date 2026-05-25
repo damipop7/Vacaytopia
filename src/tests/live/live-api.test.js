@@ -9,21 +9,27 @@
  *   2. The response structure matches what the frontend expects
  *   3. All Unsplash photo URLs in ExperienceCard return HTTP 200
  *
- * NOTE: The edge function requires the Supabase anon key as a Bearer token.
- * Make sure VITE_SUPABASE_ANON_KEY is set in your .env file.
+ * NOTE: The edge function requires a signed-in user's session JWT (not the anon
+ * key). To run the edge function tests, add a valid user JWT to .env:
+ *   VITE_TEST_USER_JWT=eyJ...
+ * Generate one by signing in at vtopia.world and copying the access_token from
+ * the Supabase session (browser devtools → Application → Local Storage).
+ * Leave it blank to skip those tests gracefully.
  */
 import { describe, it, expect } from 'vitest'
 import { PHOTOS } from '../../components/cards/ExperienceCard'
 
 const EDGE_FUNCTION_URL = 'https://vtxikcqasjxyjlxsxdof.supabase.co/functions/v1/generate-itinerary'
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const ANON_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const USER_JWT  = import.meta.env.VITE_TEST_USER_JWT || ''
+const HAS_USER_JWT = USER_JWT.length > 20
 
 function edgePost(body) {
   return fetch(EDGE_FUNCTION_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${ANON_KEY}`,
+      Authorization: `Bearer ${USER_JWT || ANON_KEY}`,
       apikey: ANON_KEY,
     },
     body: JSON.stringify(body),
@@ -44,16 +50,16 @@ describe('Edge function – generate-itinerary (LIVE)', () => {
   it('anon key is available (env check)', () => {
     expect(
       ANON_KEY.length,
-      'VITE_SUPABASE_ANON_KEY is missing from .env — all edge function tests will fail with 401'
+      'VITE_SUPABASE_ANON_KEY is missing from .env'
     ).toBeGreaterThan(10)
   })
 
-  it('responds with 200 and valid JSON', { timeout: 30000 }, async () => {
+  it.skipIf(!HAS_USER_JWT)('responds with 200 and valid JSON', { timeout: 30000 }, async () => {
     const res = await edgePost({ answers: TEST_ANSWERS })
 
     expect(
       res.status,
-      `Expected 200, got ${res.status}. ${res.status === 401 ? 'Check VITE_SUPABASE_ANON_KEY in .env' : 'Check ANTHROPIC_API_KEY secret in Supabase dashboard.'}`
+      `Expected 200, got ${res.status}. ${res.status === 401 ? 'Set VITE_TEST_USER_JWT in .env — edge function requires an authenticated user JWT' : 'Check ANTHROPIC_API_KEY secret in Supabase dashboard.'}`
     ).toBe(200)
 
     let body
@@ -66,21 +72,21 @@ describe('Edge function – generate-itinerary (LIVE)', () => {
     expect(body, 'Response missing "itinerary" key — edge function returned error').toHaveProperty('itinerary')
   })
 
-  it('itinerary has a non-empty headline', { timeout: 30000 }, async () => {
+  it.skipIf(!HAS_USER_JWT)('itinerary has a non-empty headline', { timeout: 30000 }, async () => {
     const res = await edgePost({ answers: TEST_ANSWERS })
     const { itinerary } = await res.json()
     expect(typeof itinerary?.headline, '"headline" field is missing or not a string').toBe('string')
     expect(itinerary.headline.trim().length, '"headline" is empty').toBeGreaterThan(0)
   })
 
-  it('itinerary.days has the correct number of days (2 nights = 3 days)', { timeout: 30000 }, async () => {
+  it.skipIf(!HAS_USER_JWT)('itinerary.days has the correct number of days (2 nights = 3 days)', { timeout: 30000 }, async () => {
     const res = await edgePost({ answers: TEST_ANSWERS })
     const { itinerary } = await res.json()
     expect(Array.isArray(itinerary?.days), '"days" is not an array').toBe(true)
     expect(itinerary.days.length, `Expected 3 days, got ${itinerary?.days?.length}`).toBe(3)
   })
 
-  it('each day has morning/afternoon/evening/lunch/dinner blocks', { timeout: 30000 }, async () => {
+  it.skipIf(!HAS_USER_JWT)('each day has morning/afternoon/evening/lunch/dinner blocks', { timeout: 30000 }, async () => {
     const res = await edgePost({ answers: TEST_ANSWERS })
     const { itinerary } = await res.json()
     for (const day of itinerary?.days ?? []) {
@@ -89,7 +95,7 @@ describe('Edge function – generate-itinerary (LIVE)', () => {
     }
   })
 
-  it('returns 400 with error object for missing answers', { timeout: 15000 }, async () => {
+  it.skipIf(!HAS_USER_JWT)('returns 400 with error object for missing answers', { timeout: 15000 }, async () => {
     const res = await edgePost({})
     expect(res.status, 'Expected 400 for empty body').toBe(400)
     const body = await res.json()
