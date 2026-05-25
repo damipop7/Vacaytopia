@@ -25,10 +25,9 @@ export default function ClaimExperiencePage() {
   const { data: exp, isLoading } = useQuery({
     queryKey: ['experience-claim', id],
     queryFn: async () => {
+      // Uses a SECURITY DEFINER RPC so inactive experiences are also claimable
       const { data, error } = await supabase
-        .from('experiences')
-        .select('id, title, city, category, image_emoji, is_claimed')
-        .eq('id', id)
+        .rpc('get_experience_for_claim', { exp_id: id })
         .single()
       if (error) throw error
       return data
