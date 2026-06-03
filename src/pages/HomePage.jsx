@@ -2,6 +2,7 @@ import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
+import { useLatestQuiz } from '../hooks/useQuiz'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
 import OnboardingQuiz from '../components/ui/OnboardingQuiz'
@@ -90,6 +91,7 @@ function useGlobeImmersion() {
 export default function HomePage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const { data: existingQuiz } = useLatestQuiz()
   const isLg = useMatchLg()
   const { immersion, onGlobeAltitude } = useGlobeImmersion()
   const [selectedCity, setSelectedCity] = useState(null)
@@ -100,7 +102,8 @@ export default function HomePage() {
 
   return (
     <div style={{ background:'var(--bg)' }}>
-      <OnboardingQuiz />
+      {/* Suppress popup for signed-in users who already completed the full quiz */}
+      {!existingQuiz && <OnboardingQuiz />}
 
       {/* ── HERO — Globe Section (globe zoom “immerses” layout — headline eases away) ── */}
       <section

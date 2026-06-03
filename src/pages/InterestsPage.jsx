@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLatestQuiz, useSaveQuiz } from '../hooks/useQuiz'
 import { ONBOARD_INTERESTS_KEY } from '../lib/appUrl'
+import { getStoredPersona } from '../components/ui/OnboardingQuiz'
 import {
   QUIZ_INTERESTS,
   QUIZ_TRAVEL_STYLES,
@@ -11,6 +12,19 @@ import {
   labelStyle,
   labelGroups,
 } from '../lib/travelQuiz'
+
+// Map popup quiz answers → full InterestsPage fields
+function seedFromPersona(persona) {
+  if (!persona) return null
+  const interestMap = { 'Food & Drink': 'food', Outdoors: 'outdoors', Sports: 'sports', 'Arts & Culture': 'arts' }
+  const styleMap    = { explorer: 'spontaneous', foodie: 'planner', culture: 'planner', nightlife: 'social' }
+  const groupMap    = { solo: ['solo'], couple: ['couple'], friends: ['friends'], family: ['family'] }
+  return {
+    interests:   persona.interest ? [interestMap[persona.interest]].filter(Boolean) : [],
+    travelStyle: styleMap[persona.style] || '',
+    groupType:   groupMap[persona.group] || [],
+  }
+}
 
 const STEPS = ['Interests', 'Budget', 'Destination', 'Style', 'Group', 'Save']
 
@@ -35,19 +49,30 @@ export default function InterestsPage() {
   }, [])
 
   useEffect(() => {
-    if (!existing || prefilled) return
-    /* Prefill when editing — quiz row loads after mount */
+    if (prefilled) return
     /* eslint-disable react-hooks/set-state-in-effect */
-    setInterests([...(existing.interests || [])])
-    setBudget(existing.budget ?? 250)
-    setDestination(existing.destination_city || 'all')
-    setArriveDate(existing.arrive_date?.slice(0, 10) || '')
-    setDepartDate(existing.depart_date?.slice(0, 10) || '')
-    setTravelStyle(existing.travel_style || '')
-    setGroupType([...(existing.group_type || [])])
-    setPrefilled(true)
+    if (existing) {
+      // Prefill from saved quiz_results (editing mode)
+      setInterests([...(existing.interests || [])])
+      setBudget(existing.budget ?? 250)
+      setDestination(existing.destination_city || 'all')
+      setArriveDate(existing.arrive_date?.slice(0, 10) || '')
+      setDepartDate(existing.depart_date?.slice(0, 10) || '')
+      setTravelStyle(existing.travel_style || '')
+      setGroupType([...(existing.group_type || [])])
+      setPrefilled(true)
+    } else if (!loadingQuiz) {
+      // No saved quiz — seed from popup persona if available (reduces duplicate work)
+      const seed = seedFromPersona(getStoredPersona())
+      if (seed) {
+        if (seed.interests.length)  setInterests(seed.interests)
+        if (seed.travelStyle)       setTravelStyle(seed.travelStyle)
+        if (seed.groupType.length)  setGroupType(seed.groupType)
+      }
+      setPrefilled(true)
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [existing, prefilled])
+  }, [existing, prefilled, loadingQuiz])
 
   const toggleInterest = id => {
     setInterests(prev =>
