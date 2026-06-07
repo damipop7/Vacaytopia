@@ -589,6 +589,40 @@ export default function WorldCupPage() {
 
         </div>
 
+          {/* ── DEEP-DIVE GUIDES ── */}
+          <section>
+            <div className="text-xs text-amber-400 uppercase tracking-widest font-bold mb-2">Fan Guides</div>
+            <h2 className="text-2xl font-bold mb-6">📖 Deep-Dive KC Guides</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link to="/world-cup/kansas-city-guide" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🗺️</div>
+                <div className="font-bold mb-1">Complete KC Visitor Guide</div>
+                <div className="text-white/40 text-xs">Neighborhoods, BBQ, transport, fan zones — everything in one guide.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/argentina" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🇦🇷</div>
+                <div className="font-bold mb-1">Argentina Fans Guide</div>
+                <div className="text-white/40 text-xs">June 16 match, Argentine food in KC, fan zones. En inglés y español.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/netherlands" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🇳🇱</div>
+                <div className="font-bold mb-1">Netherlands Fans Guide</div>
+                <div className="text-white/40 text-xs">Dutch base camp is KC. Training ground, orange fan-walk, June 25 match.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/match-day-plan" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">📋</div>
+                <div className="font-bold mb-1">Perfect Match Day Plan</div>
+                <div className="text-white/40 text-xs">Hour-by-hour KC schedules for each match — from 8 AM to post-match.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+            </div>
+          </section>
+
+        </div>
+
         {/* ── FOOTER CTA ── */}
         <div className="border-t border-white/10 py-12 px-4 text-center">
           <p className="text-white/40 text-sm mb-3">Powered by Vtopia · The local travel platform for World Cup 2026</p>
