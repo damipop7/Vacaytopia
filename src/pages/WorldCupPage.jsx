@@ -587,8 +587,6 @@ export default function WorldCupPage() {
             </div>
           </section>
 
-        </div>
-
           {/* ── DEEP-DIVE GUIDES ── */}
           <section>
             <div className="text-xs text-amber-400 uppercase tracking-widest font-bold mb-2">Fan Guides</div>
