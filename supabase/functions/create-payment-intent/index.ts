@@ -11,14 +11,29 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = new Set([
+  'https://www.vtopia.world',
+  'https://vtopia.world',
+  'http://localhost:5173',
+  'http://localhost:4173',
+])
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.vtopia.world'
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 serve(async (req) => {
+  const cors = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: cors })
   }
 
   try {
@@ -26,7 +41,7 @@ serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } }
       )
     }
     const token = authHeader.slice(7)
@@ -34,11 +49,19 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } }
       )
     }
 
     const { bookingId } = await req.json()
+
+    // Validate bookingId is a proper UUID before hitting the database
+    if (!bookingId || !UUID_RE.test(bookingId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request' }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { data: booking, error } = await supabase
       .from('bookings')
@@ -47,23 +70,24 @@ serve(async (req) => {
       .single()
 
     if (error || !booking) {
+      // Generic message — don't reveal internal DB error details
       return new Response(
-        JSON.stringify({ error: 'Booking not found', detail: error?.message }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Booking not found' }),
+        { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } }
       )
     }
 
     if (booking.user_id !== user.id) {
       return new Response(
         JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } }
       )
     }
 
     if (booking.status !== 'pending') {
       return new Response(
         JSON.stringify({ error: 'Booking already processed' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -86,13 +110,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ clientSecret: paymentIntent.client_secret }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...cors, 'Content-Type': 'application/json' } }
     )
 
   } catch (err) {
+    console.error('create-payment-intent error:', err)
     return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Payment processing failed' }),
+      { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } }
     )
   }
 })

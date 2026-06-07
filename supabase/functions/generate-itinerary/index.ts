@@ -8,11 +8,22 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, sentry-trace, baggage",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://www.vtopia.world",
+  "https://vtopia.world",
+  "http://localhost:5173",
+  "http://localhost:4173",
+]);
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://www.vtopia.world";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, sentry-trace, baggage",
+  };
+}
 
 const BUDGET_HOTEL_TIER: Record<string, string> = {
   budget: "budget-friendly hostels and guesthouses",
@@ -36,6 +47,28 @@ const CITY_LABELS: Record<string, string> = {
   "kansas-city": "Kansas City",
 };
 
+const VALID_TRAVELER_GROUPS = new Set([
+  "solo", "couple", "friends", "family", "business",
+  "solo traveler", "couple", "group of friends", "family with kids",
+]);
+
+const VALID_HELP_NEEDED = new Set([
+  "transport", "hotels", "restaurants", "activities", "flights", "none",
+]);
+
+// Strip prompt-injection patterns from free-text user input
+function sanitizeExtras(text: unknown): string {
+  if (typeof text !== "string") return "";
+  return text
+    .slice(0, 400)
+    .replace(/[<>]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/={3,}/g, "")
+    .replace(/ignore.{0,30}(previous|above|instructions?)/gi, "")
+    .replace(/\[INST\]|\[\/INST\]|<\|.*?\|>/g, "")  // LLM control tokens
+    .trim();
+}
+
 interface Experience {
   id: string;
   title: string;
@@ -53,11 +86,17 @@ function buildPrompt(answers: any, experiences: Experience[]): string {
       (1000 * 60 * 60 * 24)
   );
   const days = nights + 1;
-  const extras = answers.extras ? `\nExtra context: ${answers.extras}` : "";
+  // Sanitize free-text field and whitelist-validate enum fields
+  const extrasClean  = sanitizeExtras(answers.extras);
+  const extras       = extrasClean ? `\nExtra context: ${extrasClean}` : "";
 
-  // New quiz fields (backwards-compatible: may be absent in old requests)
-  const travelerGroup: string = answers.travelerGroup || "";
-  const helpNeeded: string[] = Array.isArray(answers.helpNeeded) ? answers.helpNeeded : [];
+  // Whitelist travelerGroup — reject anything not in the known set
+  const rawGroup: string = answers.travelerGroup || "";
+  const travelerGroup: string = VALID_TRAVELER_GROUPS.has(rawGroup) ? rawGroup : "";
+
+  // Whitelist each helpNeeded item individually
+  const rawHelp: string[] = Array.isArray(answers.helpNeeded) ? answers.helpNeeded : [];
+  const helpNeeded: string[] = rawHelp.filter(h => typeof h === "string" && VALID_HELP_NEEDED.has(h));
 
   const groupLine = travelerGroup
     ? `\nGroup type: ${travelerGroup}`
@@ -129,19 +168,21 @@ Keep all descriptions to 1-2 sentences max. Respond ONLY with this JSON structur
 }
 
 serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: CORS_HEADERS });
+    return new Response(null, { headers: cors });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { "Content-Type": "application/json", ...cors } });
   }
 
   try {
     if (!ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: "Server configuration error" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      return new Response(JSON.stringify({ error: "Service unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json", ...cors },
       });
     }
 
@@ -152,7 +193,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Sign in to generate an itinerary" }), {
         status: 401,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...cors },
       });
     }
 
@@ -160,7 +201,7 @@ serve(async (req) => {
     if (!answers) {
       return new Response(JSON.stringify({ error: "Missing answers" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...cors },
       });
     }
 
@@ -234,14 +275,14 @@ serve(async (req) => {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
-        ...CORS_HEADERS,
+        ...cors,
       },
     });
   } catch (err) {
     console.error("generate-itinerary error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Itinerary generation failed" }), {
       status: 500,
-      headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      headers: { "Content-Type": "application/json", ...cors },
     });
   }
 });

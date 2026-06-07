@@ -206,6 +206,10 @@ export function usePledgeBudget(tripId) {
 
   return useMutation({
     mutationFn: async ({ memberId, amountCents, note = '' }) => {
+      // Validate amount: must be a positive integer, capped at $100,000
+      if (!Number.isInteger(amountCents) || amountCents <= 0 || amountCents > 10_000_000) {
+        throw new Error('Invalid pledge amount')
+      }
       const { error: contribErr } = await supabase.from('trip_budget_contributions').insert({
         trip_id: tripId, member_id: memberId, amount_cents: amountCents, method: 'pledge', note,
       })

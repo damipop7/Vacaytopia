@@ -6,12 +6,24 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')         ?? ''
 const SERVICE_KEY       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const RESEND_KEY        = Deno.env.get('RESEND_API_KEY')
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = new Set([
+  'https://www.vtopia.world',
+  'https://vtopia.world',
+  'http://localhost:5173',
+  'http://localhost:4173',
+])
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.vtopia.world'
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   // ── Auth: verify caller is an admin ──────────────────────────────────
@@ -47,9 +59,15 @@ serve(async (req) => {
     .single()
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Failed to update submission' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+  }
+
+  function escHtml(s: unknown): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   }
 
   // ── Send operator notification email ─────────────────────────────────
@@ -66,15 +84,15 @@ serve(async (req) => {
           : `Update on your Vtopia listing submission`,
         html: approved
           ? `<h2>You're live on Vtopia! 🎉</h2>
-<p>Hi ${sub.operator_name},</p>
-<p>Your experience <strong>"${sub.title}"</strong> has been approved and will appear to visitors on Vtopia.</p>
-${adminNotes ? `<p><strong>Note from our team:</strong> ${adminNotes}</p>` : ''}
+<p>Hi ${escHtml(sub.operator_name)},</p>
+<p>Your experience <strong>"${escHtml(sub.title)}"</strong> has been approved and will appear to visitors on Vtopia.</p>
+${adminNotes ? `<p><strong>Note from our team:</strong> ${escHtml(adminNotes)}</p>` : ''}
 <p>Questions? Reply to this email or contact <a href="mailto:support@vtopia.world">support@vtopia.world</a>.</p>
 <p>— The Vtopia team</p>`
           : `<h2>Update on your submission</h2>
-<p>Hi ${sub.operator_name},</p>
-<p>Thank you for submitting <strong>"${sub.title}"</strong>. Unfortunately we're unable to list this experience at this time.</p>
-${adminNotes ? `<p><strong>Reason:</strong> ${adminNotes}</p>` : ''}
+<p>Hi ${escHtml(sub.operator_name)},</p>
+<p>Thank you for submitting <strong>"${escHtml(sub.title)}"</strong>. Unfortunately we're unable to list this experience at this time.</p>
+${adminNotes ? `<p><strong>Reason:</strong> ${escHtml(adminNotes)}</p>` : ''}
 <p>Want to resubmit with changes? Contact us at <a href="mailto:support@vtopia.world">support@vtopia.world</a>.</p>
 <p>— The Vtopia team</p>`,
       }),

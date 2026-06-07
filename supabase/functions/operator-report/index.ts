@@ -6,10 +6,21 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")         ?? "";
 const SERVICE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_KEY        = Deno.env.get("RESEND_API_KEY");
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin":  "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://www.vtopia.world",
+  "https://vtopia.world",
+  "http://localhost:5173",
+  "http://localhost:4173",
+]);
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://www.vtopia.world";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -18,11 +29,21 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function escHtml(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function fmtMonth(d = new Date()) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   // ── Auth: verify caller is an admin ───────────────────────────────────
@@ -112,11 +133,11 @@ serve(async (req) => {
 <div class="wrap">
   <div class="header">
     <h1>Your Vtopia Monthly Report</h1>
-    <p>${monthLabel} · ${sub.title}</p>
+    <p>${escHtml(monthLabel)} · ${escHtml(sub.title)}</p>
   </div>
   <div class="body">
-    <p>Hi ${sub.operator_name},</p>
-    <p>Here's how your listing <strong>"${sub.title}"</strong> performed this month on Vtopia.</p>
+    <p>Hi ${escHtml(sub.operator_name)},</p>
+    <p>Here's how your listing <strong>"${escHtml(sub.title)}"</strong> performed this month on Vtopia.</p>
 
     <div class="stats">
       <div class="stat">
@@ -140,7 +161,7 @@ serve(async (req) => {
     ${daysLive !== null ? `<p style="font-size:13px; color:#666;">Your listing has been live for <strong>${daysLive} days</strong>.</p>` : ""}
 
     <div class="tip">
-      💡 <strong>Tip:</strong> Listings with a detailed description and FAQ answers get up to 3× more engagement. ${!sub.faq_text ? "Log into Vtopia to add FAQ answers to your listing." : "Your FAQ section looks great — keep it updated!"}
+      💡 <strong>Tip:</strong> Listings with a detailed description and FAQ answers get up to 3&times; more engagement. ${!sub.faq_text ? "Log into Vtopia to add FAQ answers to your listing." : "Your FAQ section looks great — keep it updated!"}
     </div>
 
     <p style="margin-top:24px; font-size:13px; color:#666;">Questions? Reply to this email or reach us at <a href="mailto:support@vtopia.world">support@vtopia.world</a>.</p>
