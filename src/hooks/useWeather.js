@@ -45,18 +45,23 @@ export function useWeather(citySlug) {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!API_KEY) return  // graceful degrade
+    if (!API_KEY || !citySlug) return
 
+    let cancelled = false
     const coords = CITY_COORDS[citySlug] || KC_COORDS
-    const cached = readCache(coords.lat, coords.lon)
-    if (cached) { setWeather(cached); return }
 
-    setLoading(true)
-    fetch(
-      `https://api.openweathermap.org/data/3.0/onecall?lat=${coords.lat}&lon=${coords.lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${API_KEY}`
-    )
-      .then(r => r.json())
-      .then(data => {
+    async function load() {
+      const cached = readCache(coords.lat, coords.lon)
+      if (cached) {
+        if (!cancelled) setWeather(cached)
+        return
+      }
+      if (!cancelled) setLoading(true)
+      try {
+        const r    = await fetch(
+          `https://api.openweathermap.org/data/3.0/onecall?lat=${coords.lat}&lon=${coords.lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${API_KEY}`
+        )
+        const data = await r.json()
         const forecast = data.daily?.slice(0, 7).map(day => ({
           dt:          day.dt,
           tempHigh:    Math.round(day.temp.max),
@@ -68,10 +73,16 @@ export function useWeather(citySlug) {
           isCold:      day.temp.max < 45,
         })) ?? null
         writeCache(coords.lat, coords.lon, forecast)
-        setWeather(forecast)
-      })
-      .catch(() => setWeather(null))
-      .finally(() => setLoading(false))
+        if (!cancelled) setWeather(forecast)
+      } catch {
+        if (!cancelled) setWeather(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
   }, [citySlug])
 
   return { weather, loading, available: !!API_KEY }

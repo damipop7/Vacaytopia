@@ -289,19 +289,22 @@ export default function HomePage() {
           <h2 className="font-display font-bold text-3xl text-[#0D1B3E]">What lights you up?</h2>
         </div>
         <div className="max-w-4xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-3">
-          {CATS.map(({ Icon, name, q }) => (
-            <button
-              key={name}
-              onClick={() => navigate(`/browse?category=${encodeURIComponent(q)}`)}
-              aria-label={`Browse ${name}`}
-              className="bg-white rounded-card py-5 px-3 text-center hover:border-blue-brand hover:shadow-md hover:-translate-y-1 transition-all border border-blue-brand/10 group"
-            >
-              <div className="flex justify-center mb-2 text-blue-light group-hover:text-blue-brand transition-colors">
-                <Icon size={28} strokeWidth={1.6} aria-hidden="true" />
-              </div>
-              <div className="text-xs font-semibold text-gray-600 group-hover:text-blue-brand">{name}</div>
-            </button>
-          ))}
+          {CATS.map(cat => {
+            const CatIcon = cat.Icon
+            return (
+              <button
+                key={cat.name}
+                onClick={() => navigate(`/browse?category=${encodeURIComponent(cat.q)}`)}
+                aria-label={`Browse ${cat.name}`}
+                className="bg-white rounded-card py-5 px-3 text-center hover:border-blue-brand hover:shadow-md hover:-translate-y-1 transition-all border border-blue-brand/10 group"
+              >
+                <div className="flex justify-center mb-2 text-blue-light group-hover:text-blue-brand transition-colors">
+                  <CatIcon size={28} strokeWidth={1.6} aria-hidden="true" />
+                </div>
+                <div className="text-xs font-semibold text-gray-600 group-hover:text-blue-brand">{cat.name}</div>
+              </button>
+            )
+          })}
         </div>
       </section>
 

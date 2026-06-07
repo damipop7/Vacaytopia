@@ -282,7 +282,6 @@ export default function TripCreationWizard() {
   })
 
   const isStep1Valid = !!form.title.trim()
-  const isStep2Valid = true // budget is optional
 
   function handleNext() {
     if (step === 0 && !isStep1Valid) return

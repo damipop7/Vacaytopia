@@ -81,11 +81,6 @@ describe('itineraryCacheKey', () => {
 })
 
 describe('sessionStorage cache round-trip', () => {
-  const storage = {}
-  const originalGetItem = globalThis.sessionStorage?.getItem
-  const originalSetItem = globalThis.sessionStorage?.setItem
-  const originalRemoveItem = globalThis.sessionStorage?.removeItem
-
   // JSDOM provides sessionStorage; just use it directly
 
   beforeEach(() => {

@@ -4,7 +4,7 @@
  * Tests that isCityActive() correctly gates cities based on VITE_ACTIVE_CITIES.
  * Failures here mean the wrong cities appear in the quiz or browse page.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 const KNOWN_CITIES = [
   'Kansas City',

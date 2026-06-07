@@ -49,7 +49,7 @@ const ACTIVITY_LABELS = {
   itinerary_generated: (p, name) => `${name} generated an AI itinerary`,
   dates_set:           (p, name) => `${name} set the trip dates`,
   note_added:          (p, name) => `${name} added a note`,
-  message:             (p, _name) => p?.text ?? '',
+  message:             p => p?.text ?? '',
 }
 
 export function activityLabel(item) {
