@@ -4,7 +4,7 @@ import LocalClock from '../components/ui/LocalClock'
 
 const TripMap          = lazy(() => import('../components/trips/TripMap'))
 const TripCalendarView = lazy(() => import('../components/trips/TripCalendarView'))
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   DndContext,
   closestCenter,
@@ -204,9 +204,6 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, defaultTab = 'search
 // ── Day column ────────────────────────────────────────────────────────────────
 
 function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, onReorder, sensors, tripId, tripStart, trip, weatherDay = null }) {
-  // onAdd(day, slot, tab) — tab is 'search' | 'custom'
-  const sharedCardProps = { myVotes, onVote, onApprove, onRemove, isOwner, tripStart, tripId, tripTitle: trip?.title ?? 'Vtopia Trip' }
-
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
       {/* Day header */}
@@ -333,7 +330,6 @@ function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove
 
 export default function TripDashboard() {
   const { tripId } = useParams()
-  const navigate   = useNavigate()
   const user       = useAuthStore(s => s.user)
 
   const { data: trip,        isLoading: tripLoading    } = useTrip(tripId)
@@ -377,6 +373,9 @@ export default function TripDashboard() {
   }), [nights, trip?.start_date])
 
   const shareUrl = trip?.share_token ? `${window.location.origin}/trips/join/${trip.share_token}` : null
+
+  const isKCTrip = (trip?.destination ?? '').toLowerCase().includes('kansas city')
+  const { weather: tripWeather } = useWeather(isKCTrip ? 'kansas-city' : null)
 
   function handleCopyLink() {
     if (!shareUrl) return
@@ -427,8 +426,6 @@ export default function TripDashboard() {
   }
 
   const tripStart = trip.start_date ? new Date(trip.start_date) : null
-  const isKCTrip  = (trip.destination ?? '').toLowerCase().includes('kansas city')
-  const { weather: tripWeather } = useWeather(isKCTrip ? 'kansas-city' : null)
 
   function getWeatherForDate(dateStr) {
     if (!tripWeather || !dateStr) return null

@@ -22,11 +22,8 @@ export default function AdminLinksPage() {
   const [loading,      setLoading]      = useState(false)
   const [filter,       setFilter]       = useState('all')
 
-  useEffect(() => {
-    if (authed) load()
-  }, [authed])
-
   async function load() {
+    await Promise.resolve()
     setLoading(true)
     const query = supabase
       .from('experiences')
@@ -39,6 +36,9 @@ export default function AdminLinksPage() {
     setExperiences(data || [])
     setLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (authed) load() }, [authed])
 
   function handleLogin(e) {
     e.preventDefault()

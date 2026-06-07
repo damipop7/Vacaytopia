@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import { getAuthCallbackUrl } from '../lib/appUrl'
 
 export const useAuthStore = create((set, get) => ({
   user:    null,

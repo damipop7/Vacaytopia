@@ -179,7 +179,7 @@ export function useJoinTrip() {
 
       return trip
     },
-    onSuccess: (_d, _v, _c) => qc.invalidateQueries({ queryKey: ['trips'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['trips'] }),
   })
 }
 

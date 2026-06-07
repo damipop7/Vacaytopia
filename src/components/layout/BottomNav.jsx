@@ -34,7 +34,9 @@ export default function BottomNav() {
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around h-14 px-2">
-        {items.map(({ to, icon: Icon, label, authOnly }) => {
+        {items.map(item => {
+          const { to, icon, label, authOnly } = item
+          const NavIcon = icon
           const isActive = to === '/'
             ? location.pathname === '/'
             : location.pathname.startsWith(to)
@@ -53,7 +55,7 @@ export default function BottomNav() {
               }`}
             >
               <div className="relative">
-                <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" />
+                <NavIcon size={22} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" />
                 {hasBadge && (
                   <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-gold-brand text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {savedIds.length > 9 ? '9+' : savedIds.length}

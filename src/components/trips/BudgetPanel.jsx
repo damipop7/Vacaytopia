@@ -15,7 +15,7 @@ function ProgressBar({ filled, total, color = 'bg-blue-500' }) {
   )
 }
 
-export default function BudgetPanel({ trip, isOwner = false }) {
+export default function BudgetPanel({ trip }) {
   const user = useAuthStore(s => s.user)
   const { mutate: pledge, isPending } = usePledgeBudget(trip.id)
   const [pledgeOpen, setPledgeOpen] = useState(false)

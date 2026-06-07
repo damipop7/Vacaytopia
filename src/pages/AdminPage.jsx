@@ -926,7 +926,6 @@ function DetailField({ label, value }) {
 // ── TAB: Guide Applications ──────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 function GuideApplicationsTab({ onPendingCount }) {
-  const { session } = useAuthStore()
   const [rows, setRows]           = useState([])
   const [loading, setLoading]     = useState(true)
   const [filter, setFilter]       = useState('pending')
@@ -1104,7 +1103,6 @@ function GuideApplicationsTab({ onPendingCount }) {
 // ── TAB: Claims ─────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 function ClaimsTab({ onPendingCount }) {
-  const { session } = useAuthStore()
   const [rows, setRows]           = useState([])
   const [loading, setLoading]     = useState(true)
   const [filter, setFilter]       = useState('pending')

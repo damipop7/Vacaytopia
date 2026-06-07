@@ -79,7 +79,7 @@ describe('handle_new_user — profile built from auth data', () => {
 // "with check (true)" means every row passes — the trigger can always insert
 // regardless of which Supabase internal role runs it.
 
-function evaluateInsertPolicy(row) {
+function evaluateInsertPolicy() {
   // Mirrors: WITH CHECK (true)
   return true
 }
