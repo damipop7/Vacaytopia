@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useImportItineraryAsGroupTrip } from "../hooks/useTrip";
 import ExperienceCard from "../components/cards/ExperienceCard";
 import { useWeather } from "../hooks/useWeather";
+import WeatherWidget from "../components/ui/WeatherWidget";
 import { bookingCityUrl, uberDeepLink, lyftDeepLink } from "../lib/affiliates.config";
 import { CITY_LABELS, BUDGET_LABELS } from "../lib/cities";
 
@@ -140,7 +141,7 @@ function MealBlock({ label, content }) {
   );
 }
 
-function DayCard({ day, index }) {
+function DayCard({ day, index, weatherDay = null }) {
   const [open, setOpen] = useState(index === 0);
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
@@ -153,6 +154,13 @@ function DayCard({ day, index }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {weatherDay && (
+            <div className="hidden sm:flex items-center gap-1.5">
+              <img src={`https://openweathermap.org/img/wn/${weatherDay.icon}.png`} alt={weatherDay.description} width={20} height={20} className="opacity-70" />
+              <span className="text-xs text-white/50 font-mono">{weatherDay.tempHigh}°</span>
+              {weatherDay.isRainy && <span className="text-[10px] text-blue-300 font-bold">Rain</span>}
+            </div>
+          )}
           {day.dailyTotal && <span className="text-xs bg-white/5 border border-white/10 rounded-full px-3 py-1 text-white/50 font-mono hidden md:block">~{day.dailyTotal}</span>}
           <span className={`text-white/40 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
         </div>
@@ -235,39 +243,6 @@ function BookableExperiences({ cityKey, interests = [] }) {
   );
 }
 
-/** 7-day weather strip — only renders when OpenWeatherMap key is set */
-function WeatherStrip({ citySlug }) {
-  const { weather, available } = useWeather(citySlug)
-  if (!available || !weather) return null
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
-      <p className="text-white/40 text-xs uppercase tracking-widest mb-3">7-Day Forecast</p>
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {weather.map(day => {
-          const date  = new Date(day.dt * 1000)
-          const label = days[date.getDay()]
-          return (
-            <div key={day.dt} className="flex flex-col items-center gap-1 min-w-[52px]">
-              <span className="text-white/40 text-[10px]">{label}</span>
-              <img
-                src={`https://openweathermap.org/img/wn/${day.icon}.png`}
-                alt={day.description}
-                width={32}
-                height={32}
-                className="opacity-80"
-              />
-              {day.isRainy && <span className="text-[9px] text-blue-300 font-semibold">Rain</span>}
-              <span className="text-xs font-bold text-white">{day.tempHigh}°</span>
-              <span className="text-[10px] text-white/30">{day.tempLow}°</span>
-            </div>
-          )
-        })}
-      </div>
-      <p className="text-white/30 text-[10px] mt-2">Weather shown in °F · Rainy days marked — outdoor activities may be re-ordered.</p>
-    </div>
-  )
-}
 
 /** Running cost total — sums cost strings from day slots */
 function CostSummary({ days }) {
@@ -677,9 +652,9 @@ export default function ItineraryResults() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {activeTab === "itinerary" && (
           <div className="flex flex-col gap-4">
-            <WeatherStrip citySlug={answers.city} />
+            <WeatherWidget citySlug={answers.city} variant="strip" theme="dark" />
             <CostSummary days={itinerary.days} />
-            {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
+            {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} weatherDay={weather?.[i]} />)}
 
             {/* Solo → group upgrade CTA — hidden for solo travelers */}
             {!isSolo && (

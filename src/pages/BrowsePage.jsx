@@ -4,10 +4,14 @@ import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
 import { useAuthStore } from '../store/authStore'
+import { useNearMe } from '../hooks/useNearMe'
+import { useWeather } from '../hooks/useWeather'
+import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
 import { QUIZ_INTERESTS } from '../lib/travelQuiz'
-import { Clock, SlidersHorizontal, X } from 'lucide-react'
+import { distanceMi } from '../lib/geo'
+import { Clock, SlidersHorizontal, X, Navigation } from 'lucide-react'
 
 const BrowseMap = lazy(() => import('../components/browse/BrowseMap'))
 
@@ -37,6 +41,13 @@ const CATEGORIES = [
 ]
 
 const SORTS = ['Recommended', 'Price ↑', 'Price ↓', 'Top Rated']
+
+const RADIUS_OPTIONS = [
+  { label: 'Walk (½ mi)', value: 0.5 },
+  { label: '1 mi',        value: 1   },
+  { label: '5 mi',        value: 5   },
+  { label: 'Any',         value: null },
+]
 
 const LIVE_CITIES = new Set(['Kansas City'])
 
@@ -75,8 +86,27 @@ export default function BrowsePage() {
   const [viewMode,      setViewMode]      = useState('grid') // 'grid' | 'map'
   const [openNow,       setOpenNow]       = useState(false)
   const [mobileFilters, setMobileFilters] = useState(false)
+  const [radius,        setRadius]        = useState(null)  // miles, null = any
   const pillBarRef  = useRef(null)
   const activePillRef = useRef(null)
+
+  const { status: nearStatus, coords: nearCoords, request: requestNear, clear: clearNear } = useNearMe()
+  const nearMeActive = nearStatus === 'granted'
+  const [goodForToday, setGoodForToday] = useState(false)
+  const { weather: todayWeather } = useWeather('kansas-city')
+  const todayIsRainy = todayWeather?.[0]?.isRainy ?? false
+  const INDOOR_CATS = new Set(['Food & Drink', 'Arts & Culture', 'Nightlife', 'Wellness'])
+  const OUTDOOR_CATS = new Set(['Outdoors', 'Sports'])
+
+  function toggleNearMe() {
+    if (nearMeActive) {
+      clearNear()
+      setRadius(null)
+    } else {
+      requestNear()
+      setViewMode('map')
+    }
+  }
 
   useEffect(() => {
     if (!cityParam) return
@@ -115,20 +145,48 @@ export default function BrowsePage() {
     return cur >= toMins(openStr) && cur < toMins(closeStr)
   }
 
+  // Attach distance to each experience when Near Me is active
+  const withDistance = experiences.map(exp => {
+    if (!nearMeActive || !nearCoords || exp.lat == null || exp.lng == null) {
+      return { ...exp, _distMi: null }
+    }
+    return { ...exp, _distMi: distanceMi(nearCoords.lat, nearCoords.lng, Number(exp.lat), Number(exp.lng)) }
+  })
+
   // Client-side search + sort on top of server results
-  const filtered = experiences
+  const filtered = withDistance
     .filter(e =>
       !search ||
       e.title.toLowerCase().includes(search.toLowerCase()) ||
       e.city.toLowerCase().includes(search.toLowerCase())
     )
     .filter(e => !openNow || isOpenNow(e))
+    .filter(e => {
+      if (!goodForToday) return true
+      return todayIsRainy ? INDOOR_CATS.has(e.category) : OUTDOOR_CATS.has(e.category)
+    })
+    // Near Me: hide experiences without coords, apply radius
+    .filter(e => {
+      if (!nearMeActive) return true
+      if (e._distMi === null) return false        // no coords — hide in Near Me mode
+      if (radius !== null && e._distMi > radius) return false
+      return true
+    })
     .sort((a, b) => {
+      if (nearMeActive)         return (a._distMi ?? 999) - (b._distMi ?? 999) // closest first
       if (sort === 'Price ↑')   return a.price_per_person - b.price_per_person
       if (sort === 'Price ↓')   return b.price_per_person - a.price_per_person
       if (sort === 'Top Rated') return b.rating - a.rating
       return (b._score ?? 0) - (a._score ?? 0) // Recommended = by score
     })
+
+  // IDs shown in "Personalized for you" — excluded from main grid to avoid duplicates
+  let personalizedIds = new Set()
+  if (user && quizData?.interests?.length && !isLoading) {
+    const catMap = { food: 'Food & Drink', outdoors: 'Outdoors', nightlife: 'Nightlife', sports: 'Sports', arts: 'Arts & Culture', wellness: 'Wellness' }
+    const interestCats = new Set(quizData.interests.map(i => catMap[i]).filter(Boolean))
+    experiences.filter(e => interestCats.has(e.category)).slice(0, 6).forEach(e => personalizedIds.add(e.id))
+  }
 
   const cityName    = CITIES.find(c => c.value === city)?.label.split(' ').slice(1).join(' ') || 'All Cities'
   const isComingSoon = city !== 'all' && !LIVE_CITIES.has(city)
@@ -364,6 +422,21 @@ export default function BrowsePage() {
                 ))}
               </div>
             </div>
+            {/* Near Me — mobile */}
+            <button
+              type="button"
+              onClick={toggleNearMe}
+              disabled={nearStatus === 'requesting'}
+              className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                nearMeActive
+                  ? 'bg-blue-brand text-white border-blue-brand'
+                  : 'border-blue-brand/15 text-gray-500 bg-white hover:border-blue-brand hover:text-blue-brand'
+              }`}
+            >
+              <Navigation size={12} />
+              {nearStatus === 'requesting' ? '…' : 'Near Me'}
+            </button>
+
             {/* Filter button */}
             <button
               onClick={() => setMobileFilters(true)}
@@ -414,6 +487,45 @@ export default function BrowsePage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Near Me toggle */}
+            <button
+              type="button"
+              onClick={toggleNearMe}
+              aria-pressed={nearMeActive}
+              disabled={nearStatus === 'requesting'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                nearMeActive
+                  ? 'bg-blue-brand text-white border-blue-brand'
+                  : nearStatus === 'denied'
+                  ? 'border-red-300 text-red-500 cursor-not-allowed'
+                  : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+              }`}
+              title={nearStatus === 'denied' ? 'Location access denied — enable it in browser settings' : nearStatus === 'unavailable' ? 'Geolocation not supported in this browser' : ''}
+            >
+              <Navigation size={13} aria-hidden="true" />
+              {nearStatus === 'requesting' ? 'Locating…' : nearMeActive ? 'Near Me ✓' : 'Near Me'}
+            </button>
+
+            {/* Radius picker — only visible when Near Me is active */}
+            {nearMeActive && (
+              <div className="flex items-center gap-1 bg-white border border-blue-brand/15 rounded-pill px-1 py-0.5">
+                {RADIUS_OPTIONS.map(opt => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => setRadius(opt.value)}
+                    className={`px-2.5 py-1 rounded-pill text-[11px] font-semibold transition-all ${
+                      radius === opt.value
+                        ? 'bg-blue-brand text-white'
+                        : 'text-gray-500 hover:text-blue-brand'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Open now toggle */}
             <button
               type="button"
@@ -428,6 +540,23 @@ export default function BrowsePage() {
               <Clock size={13} aria-hidden="true" />
               Open now
             </button>
+
+            {/* Good for today — smart weather filter, only when weather data available */}
+            {todayWeather?.[0] && (
+              <button
+                type="button"
+                onClick={() => setGoodForToday(g => !g)}
+                aria-pressed={goodForToday}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                  goodForToday
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+                }`}
+                title={todayIsRainy ? 'Filters to indoor experiences — it\'s rainy today' : 'Filters to outdoor experiences — great weather today'}
+              >
+                {todayIsRainy ? '🌧 Indoor today' : '☀️ Good outside'}
+              </button>
+            )}
 
             <div className="flex rounded-pill border border-blue-brand/15 p-0.5 bg-white">
               {['grid', 'map'].map(m => (
@@ -457,6 +586,23 @@ export default function BrowsePage() {
             </div>
           </div>
         </div>
+
+        {/* Today's weather context bar — light strip above results */}
+        {todayWeather?.[0] && (
+          <div className="mb-4">
+            <WeatherWidget citySlug="kansas-city" variant="inline" theme="light" />
+          </div>
+        )}
+
+        {/* Near Me — permission denied / unavailable notice */}
+        {(nearStatus === 'denied' || nearStatus === 'unavailable') && (
+          <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-card text-sm text-red-600">
+            <Navigation size={15} className="flex-shrink-0" />
+            {nearStatus === 'denied'
+              ? 'Location access was denied. Enable it in your browser settings and try again.'
+              : 'Geolocation is not supported in this browser.'}
+          </div>
+        )}
 
         {/* Personalized for you — shown when user has saved interests */}
         {user && quizData?.interests?.length > 0 && !isLoading && experiences.length > 0 && (() => {
@@ -525,16 +671,16 @@ export default function BrowsePage() {
               </div>
             }
           >
-            <BrowseMap experiences={filtered} />
+            <BrowseMap experiences={filtered} userCoords={nearCoords} />
           </Suspense>
         )}
 
         {/* Grid */}
         {!isLoading && filtered.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filtered.map((exp, idx) => (
+            {filtered.filter(e => !personalizedIds.has(e.id)).map((exp, idx) => (
               <Fragment key={exp.id}>
-                <ExperienceCard experience={exp} showForYou />
+                <ExperienceCard experience={exp} showForYou distanceMi={exp._distMi} />
                 {idx === 5 && (
                   <div className="col-span-full bg-white rounded-card border border-gold-brand/25 px-5 py-4 flex items-center gap-4">
                     <div className="text-3xl">🏨</div>
@@ -570,14 +716,22 @@ export default function BrowsePage() {
         {/* Empty state */}
         {!isLoading && filtered.length === 0 && !error && !isComingSoon && (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">🗺️</div>
-            <div className="font-display font-bold text-xl text-[#0D1B3E] mb-2">No experiences found</div>
-            <div className="text-gray-400 text-sm mb-6">Try adjusting your filters or increasing your budget.</div>
+            <div className="text-5xl mb-4">{nearMeActive ? '📍' : '🗺️'}</div>
+            <div className="font-display font-bold text-xl text-[#0D1B3E] mb-2">
+              {nearMeActive ? 'No experiences found nearby' : 'No experiences found'}
+            </div>
+            <div className="text-gray-400 text-sm mb-6">
+              {nearMeActive
+                ? 'Try increasing the radius or exploring a different category.'
+                : 'Try adjusting your filters or increasing your budget.'}
+            </div>
             <button
-              onClick={() => { setCategory('all'); setBudget(500); setSearch('') }}
+              onClick={() => {
+                if (nearMeActive) { setRadius(null) } else { setCategory('all'); setBudget(500); setSearch('') }
+              }}
               className="btn-primary text-sm"
             >
-              Reset filters
+              {nearMeActive ? 'Show all distances' : 'Reset filters'}
             </button>
           </div>
         )}

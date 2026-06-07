@@ -1,4 +1,6 @@
 import { useState, useMemo, lazy, Suspense } from 'react'
+import { useWeather } from '../hooks/useWeather'
+import LocalClock from '../components/ui/LocalClock'
 
 const TripMap          = lazy(() => import('../components/trips/TripMap'))
 const TripCalendarView = lazy(() => import('../components/trips/TripCalendarView'))
@@ -201,7 +203,7 @@ function AddExperienceDrawer({ tripId, dayNumber, timeSlot, defaultTab = 'search
 
 // ── Day column ────────────────────────────────────────────────────────────────
 
-function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, onReorder, sensors, tripId, tripStart, trip }) {
+function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove, onRemove, onAdd, onReorder, sensors, tripId, tripStart, trip, weatherDay = null }) {
   // onAdd(day, slot, tab) — tab is 'search' | 'custom'
   const sharedCardProps = { myVotes, onVote, onApprove, onRemove, isOwner, tripStart, tripId, tripTitle: trip?.title ?? 'Vtopia Trip' }
 
@@ -216,6 +218,13 @@ function DayColumn({ day, date, experiences, myVotes, isOwner, onVote, onApprove
           {date && <div className="text-white/40 text-xs">{new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>}
           <div className="text-white font-semibold text-sm">Day {day}</div>
         </div>
+        {weatherDay && (
+          <div className="hidden sm:flex items-center gap-1.5 ml-2">
+            <img src={`https://openweathermap.org/img/wn/${weatherDay.icon}.png`} alt={weatherDay.description} width={20} height={20} className="opacity-70" />
+            <span className="text-xs text-white/50 font-mono">{weatherDay.tempHigh}°</span>
+            {weatherDay.isRainy && <span className="text-[10px] text-blue-300 font-bold">Rain</span>}
+          </div>
+        )}
         <div className="ml-auto">
           <AddToCalendarButton
             experiences={experiences}
@@ -418,6 +427,14 @@ export default function TripDashboard() {
   }
 
   const tripStart = trip.start_date ? new Date(trip.start_date) : null
+  const isKCTrip  = (trip.destination ?? '').toLowerCase().includes('kansas city')
+  const { weather: tripWeather } = useWeather(isKCTrip ? 'kansas-city' : null)
+
+  function getWeatherForDate(dateStr) {
+    if (!tripWeather || !dateStr) return null
+    const target = new Date(dateStr).toDateString()
+    return tripWeather.find(w => new Date(w.dt * 1000).toDateString() === target) ?? null
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -434,6 +451,11 @@ export default function TripDashboard() {
               {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}</>
             )}
           </p>
+          {isKCTrip && (
+            <div className="mt-2">
+              <LocalClock timezone="America/Chicago" label="Kansas City" theme="dark" compact />
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {shareUrl && (
@@ -554,6 +576,7 @@ export default function TripDashboard() {
               tripId={tripId}
               tripStart={tripStart}
               trip={trip}
+              weatherDay={getWeatherForDate(date)}
             />
           ))}
 

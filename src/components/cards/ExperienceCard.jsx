@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useWishlist } from '../../hooks/useWishlist'
-import { Heart, MapPin, Clock, Star, ExternalLink } from 'lucide-react'
+import { Heart, MapPin, Clock, Star, ExternalLink, Navigation } from 'lucide-react'
 import { viatorSearchUrl, openTableUrl } from '../../lib/affiliates.config'
+import { formatDistance, walkMinutes } from '../../lib/geo'
+import { isOpenNow } from '../../lib/openingHours'
 
 const GRADIENTS = {
   'ci-mia': 'from-[#b2e8f8] to-[#7dd8f5]',
@@ -242,7 +244,7 @@ export function PriceTier({ tier, className = '' }) {
 // eslint-disable-next-line react-refresh/only-export-components -- shared display constants used across pages
 export { PHOTOS, FALLBACK_PHOTOS, GRADIENTS, CATEGORY_STYLES, getPhotoUrl, getCategoryFallbackUrl }
 
-export default function ExperienceCard({ experience, showForYou = false }) {
+export default function ExperienceCard({ experience, showForYou = false, distanceMi: distMi = null }) {
   const navigate = useNavigate()
   const { isSaved, toggleSave, isSaving } = useWishlist()
 
@@ -252,8 +254,10 @@ export default function ExperienceCard({ experience, showForYou = false }) {
     id, title, city, category,
     price_per_person, price_tier,
     duration_label, rating, review_count,
-    image_url, image_gradient, is_sponsored, _score, tags,
+    image_url, image_gradient, is_sponsored, _score, tags, hours,
   } = experience
+
+  const openStatus = isOpenNow(hours) // null = no data, true = open, false = closed
 
   const { shown: highlights, overflow: highlightOverflow } = pickHighlights(tags)
 
@@ -302,11 +306,16 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           </div>
         )}
 
-        {isForYou && !is_sponsored && (
+        {distMi !== null ? (
+          <div className="absolute bottom-2 left-2 bg-white/90 text-blue-brand text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-brand/20 z-10 flex items-center gap-1">
+            <Navigation size={9} aria-hidden="true" />
+            {walkMinutes(distMi) ? `${walkMinutes(distMi)} min walk` : formatDistance(distMi)}
+          </div>
+        ) : isForYou && !is_sponsored ? (
           <div className="absolute bottom-2 left-2 bg-gold-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
             ✨ For You
           </div>
-        )}
+        ) : null}
 
         <button
           className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all z-10
@@ -340,6 +349,13 @@ export default function ExperienceCard({ experience, showForYou = false }) {
           {duration_label && <><span>·</span><span className="flex items-center gap-0.5"><Clock size={11} aria-hidden="true" />{duration_label}</span></>}
           {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
           {rating > 0 && <><span>·</span><span className="flex items-center gap-0.5 text-gold-brand"><Star size={11} aria-hidden="true" fill="currentColor" />{rating}</span></>}
+          {openStatus !== null && (
+            <><span>·</span>
+            <span className={`flex items-center gap-0.5 font-medium ${openStatus ? 'text-green-600' : 'text-red-400'}`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${openStatus ? 'bg-green-500' : 'bg-red-400'}`} aria-hidden="true" />
+              {openStatus ? 'Open' : 'Closed'}
+            </span></>
+          )}
         </div>
 
         {highlights.length > 0 && (

@@ -20,7 +20,11 @@ const AdminLinksPage   = lazy(() => import('./pages/AdminLinksPage'))
 const ItineraryQuiz    = lazy(() => import('./pages/ItineraryQuiz'))
 const ItineraryResults = lazy(() => import('./pages/ItineraryResults'))
 const ItineraryView    = lazy(() => import('./pages/ItineraryView'))
-const WorldCupPage         = lazy(() => import('./pages/WorldCupPage'))
+const WorldCupPage            = lazy(() => import('./pages/WorldCupPage'))
+const WCKansasCityGuidePage   = lazy(() => import('./pages/WCKansasCityGuidePage'))
+const WCArgentinaPage         = lazy(() => import('./pages/WCArgentinaPage'))
+const WCNetherlandsPage       = lazy(() => import('./pages/WCNetherlandsPage'))
+const WCMatchDayPage          = lazy(() => import('./pages/WCMatchDayPage'))
 const KansasCityPage       = lazy(() => import('./pages/KansasCityPage'))
 const ListExperiencePage   = lazy(() => import('./pages/ListExperiencePage'))
 const BecomeAGuidePage     = lazy(() => import('./pages/BecomeAGuidePage'))
@@ -77,7 +81,11 @@ export default function App() {
                 <Route path="/itinerary"         element={<ItineraryQuiz />} />
                 <Route path="/itinerary/results" element={<ItineraryResults />} />
                 <Route path="/itinerary/:id" element={<ItineraryView />} />
-                <Route path="/world-cup"           element={<WorldCupPage />} />
+                <Route path="/world-cup"                    element={<WorldCupPage />} />
+                <Route path="/world-cup/kansas-city-guide" element={<WCKansasCityGuidePage />} />
+                <Route path="/world-cup/argentina"         element={<WCArgentinaPage />} />
+                <Route path="/world-cup/netherlands"       element={<WCNetherlandsPage />} />
+                <Route path="/world-cup/match-day-plan"    element={<WCMatchDayPage />} />
                 <Route path="/kansas-city"         element={<KansasCityPage />} />
                 <Route path="/list-your-experience" element={<ListExperiencePage />} />
                 <Route path="/become-a-guide"       element={<BecomeAGuidePage />} />

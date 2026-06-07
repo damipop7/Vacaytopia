@@ -4,6 +4,17 @@ import L from 'leaflet'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
+const userLocationIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    width:18px;height:18px;border-radius:50%;
+    background:#2563eb;border:3px solid #fff;
+    box-shadow:0 0 0 4px rgba(37,99,235,0.25);
+  "></div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
 const CITY_CENTERS = {
   'New York City': [40.7128, -74.006],
   Miami:           [25.7617, -80.1918],
@@ -156,9 +167,14 @@ function ClusterLayer({ experiences, navigate }) {
   return null
 }
 
-function FitBounds({ experiences }) {
+function FitBounds({ experiences, userCoords }) {
   const map = useMap()
   useEffect(() => {
+    // If Near Me is active, centre on user location
+    if (userCoords) {
+      map.setView([userCoords.lat, userCoords.lng], 13)
+      return
+    }
     if (!experiences?.length) return
     const cities = [...new Set(experiences.map(e => e.city))]
     if (cities.length === 1) {
@@ -168,27 +184,45 @@ function FitBounds({ experiences }) {
     }
     const points = cities.map(c => CITY_CENTERS[c]).filter(Boolean).map(p => L.latLng(p[0], p[1]))
     if (points.length) map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 8 })
-  }, [map, experiences])
+  }, [map, experiences, userCoords])
   return null
 }
 
-export default function BrowseMap({ experiences }) {
+function UserPin({ coords }) {
+  const map = useMap()
+  const markerRef = useRef(null)
+
+  useEffect(() => {
+    if (!coords) return
+    if (markerRef.current) map.removeLayer(markerRef.current)
+    const marker = L.marker([coords.lat, coords.lng], { icon: userLocationIcon, zIndexOffset: 1000 })
+    marker.bindPopup('<div style="font-family:\'DM Sans\',sans-serif;font-weight:700;font-size:12px;color:#0D1B3E;">📍 You are here</div>')
+    marker.addTo(map)
+    markerRef.current = marker
+    return () => { if (markerRef.current) map.removeLayer(markerRef.current) }
+  }, [map, coords])
+
+  return null
+}
+
+export default function BrowseMap({ experiences, userCoords = null }) {
   const navigate = useNavigate()
 
   const cities = useMemo(() => [...new Set((experiences || []).map(e => e.city))], [experiences])
   const hasMultipleCities = cities.length > 1
 
   const defaultCenter = useMemo(() => {
+    if (userCoords) return [userCoords.lat, userCoords.lng]
     if (!experiences?.length) return US_CENTER
     if (cities.length === 1 && CITY_CENTERS[cities[0]]) return CITY_CENTERS[cities[0]]
     return US_CENTER
-  }, [experiences, cities])
+  }, [experiences, cities, userCoords])
 
   return (
     <div className="rounded-card border border-blue-brand/10 overflow-hidden bg-white shadow-sm">
       <MapContainer
         center={defaultCenter}
-        zoom={hasMultipleCities ? 4 : 11}
+        zoom={userCoords ? 13 : hasMultipleCities ? 4 : 11}
         className="z-0"
         style={{ height: 'min(70vh, 560px)', width: '100%' }}
         scrollWheelZoom
@@ -197,8 +231,9 @@ export default function BrowseMap({ experiences }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBounds experiences={experiences} />
+        <FitBounds experiences={experiences} userCoords={userCoords} />
         <ClusterLayer experiences={experiences} navigate={navigate} />
+        {userCoords && <UserPin coords={userCoords} />}
       </MapContainer>
     </div>
   )

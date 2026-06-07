@@ -7,6 +7,7 @@ import { PriceTier, getPhotoUrl, pickHighlights } from '../components/cards/Expe
 import { openTableUrl, viatorSearchUrl, uberDeepLink, lyftDeepLink } from '../lib/affiliates.config'
 import { getTodayHours, isOpenNow, formatHoursRange } from '../lib/openingHours'
 import { MapPin, Clock, Users, Heart, Share2, ShieldCheck } from 'lucide-react'
+import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceConcierge from '../components/ui/ExperienceConcierge'
 import { usePersonalizedBlurb } from '../hooks/usePersonalizedBlurb'
 
@@ -653,8 +654,39 @@ function ExperiencePageInner({ id }) {
               <div className="flex items-center gap-2 mt-3">
                 <PriceTier tier={resolvedTier} className="text-sm" />
                 <span className="text-xs text-gray-400">{typeLabel(exp.experience_type)}</span>
+                {/* Closes-in countdown — only when open and within 2 h of closing */}
+                {(() => {
+                  if (!isOpenNow(exp.hours)) return null
+                  const todayRange = getTodayHours(exp.hours)
+                  if (!todayRange || todayRange.toLowerCase() === 'closed') return null
+                  const m = todayRange.match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/)
+                  if (!m) return null
+                  const closeStr = m[2]
+                  const [ch, cm] = closeStr.split(':').map(Number)
+                  const closeMins = ch * 60 + cm
+                  const nowStr = new Date().toLocaleTimeString('en-US', {
+                    timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: false, hourCycle: 'h23',
+                  })
+                  const [nh, nm] = nowStr.split(':').map(Number)
+                  const nowMins = nh * 60 + nm
+                  const diffMins = closeMins - nowMins
+                  if (diffMins <= 0 || diffMins > 120) return null
+                  const hrs = Math.floor(diffMins / 60)
+                  const mins = diffMins % 60
+                  const label = hrs > 0 ? `Closes in ${hrs}h ${mins > 0 ? `${mins}m` : ''}` : `Closes in ${mins}m`
+                  return (
+                    <span className="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      ⏱ {label.trim()}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
+
+            {/* Outdoor / Sports weather context strip */}
+            {['Outdoors', 'Sports'].includes(exp.category) && (
+              <WeatherWidget citySlug="kansas-city" variant="strip" theme="light" days={3} className="mb-4" />
+            )}
 
             {/* About — personalized when quiz answers are in session, static otherwise */}
             {(exp.description || personalizedBlurb || blurbLoading) && (

@@ -1,6 +1,35 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { supabase } from '../lib/supabase'
+import LocalClock from '../components/ui/LocalClock'
+
+// Climatic KC weather estimates for each match (forecast API range is 7 days;
+// matches are further out so we use historical June/July averages for KC)
+const MATCH_WEATHER = {
+  'arg-alg-jun16':  { tempHigh: 84, tempLow: 65, desc: 'Partly cloudy',     rainChance: 35, icon: '02d' },
+  'ecu-cur-jun20':  { tempHigh: 86, tempLow: 68, desc: 'Partly cloudy',     rainChance: 40, icon: '02d' },
+  'tun-ned-jun25':  { tempHigh: 88, tempLow: 70, desc: 'Chance of storms',  rainChance: 45, icon: '10d' },
+  'alg-aut-jun27':  { tempHigh: 88, tempLow: 70, desc: 'Chance of storms',  rainChance: 40, icon: '10d' },
+  'r32-jul3':       { tempHigh: 90, tempLow: 72, desc: 'Hot & partly cloudy', rainChance: 35, icon: '02d' },
+  'qf-jul11':       { tempHigh: 91, tempLow: 73, desc: 'Hot & humid',       rainChance: 30, icon: '02d' },
+}
+
+function MatchWeatherBadge({ matchId }) {
+  const w = MATCH_WEATHER[matchId]
+  if (!w) return null
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl flex-shrink-0">
+      <img src={`https://openweathermap.org/img/wn/${w.icon}.png`} alt={w.desc} width={24} height={24} className="opacity-80" />
+      <div>
+        <div className="text-white text-xs font-bold leading-none">{w.tempHigh}°F</div>
+        <div className="text-white/40 text-[10px] leading-none mt-0.5">
+          {w.rainChance}% rain
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ── Feature flag guard ─────────────────────────────────────────────── */
 const WC_ENABLED = import.meta.env.VITE_FEATURE_WORLD_CUP === 'true'
@@ -73,13 +102,170 @@ const GETTING_AROUND = [
 ]
 
 const MATCH_SCHEDULE_STUB = [
-  { date: 'Tue 16 Jun · 8:00 PM CT', teams: 'Argentina vs Algeria',   venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 19' },
-  { date: 'Sat 20 Jun · 7:00 PM CT', teams: 'Ecuador vs Curaçao',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group E — Match 34' },
-  { date: 'Thu 25 Jun · 6:00 PM CT', teams: 'Tunisia vs Netherlands', venue: 'GEHA Field at Arrowhead Stadium', note: 'Group F — Match 58' },
-  { date: 'Sat 27 Jun · 9:00 PM CT', teams: 'Algeria vs Austria',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 69' },
-  { date: 'Fri  3 Jul · 8:30 PM CT', teams: 'Round of 32',            venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 87 — teams TBD after group stage' },
-  { date: 'Sat 11 Jul · 8:00 PM CT', teams: 'Quarter-Final',          venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 100 — teams TBD after Round of 32' },
+  { id: 'arg-alg-jun16', date: 'Tue 16 Jun · 8:00 PM CT', teams: 'Argentina vs Algeria',   venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 19' },
+  { id: 'ecu-cur-jun20', date: 'Sat 20 Jun · 7:00 PM CT', teams: 'Ecuador vs Curaçao',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group E — Match 34' },
+  { id: 'tun-ned-jun25', date: 'Thu 25 Jun · 6:00 PM CT', teams: 'Tunisia vs Netherlands', venue: 'GEHA Field at Arrowhead Stadium', note: 'Group F — Match 58' },
+  { id: 'alg-aut-jun27', date: 'Sat 27 Jun · 9:00 PM CT', teams: 'Algeria vs Austria',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 69' },
+  { id: 'r32-jul3',      date: 'Fri  3 Jul · 8:30 PM CT', teams: 'Round of 32',            venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 87 — teams TBD after group stage' },
+  { id: 'qf-jul11',      date: 'Sat 11 Jul · 8:00 PM CT', teams: 'Quarter-Final',          venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 100 — teams TBD after Round of 32' },
 ]
+
+// ── KC match data with ticket affiliate search links ─────────────────────────
+// Replace STUBHUB_AFFILIATE, VIVIDSEATS_AFFILIATE, SEATGEEK_AFFILIATE with
+// your actual affiliate tracking URLs once approved (CJ / Impact / SeatGeek partner portal)
+const STUBHUB_BASE    = 'https://www.stubhub.com/search?q='
+const VIVIDSEATS_BASE = 'https://www.vividseats.com/search?searchTerm='
+const SEATGEEK_BASE   = 'https://seatgeek.com/search?q='
+
+const KC_MATCHES = [
+  { id: 'arg-alg-jun16',  date: 'Tue Jun 16',  time: '8:00 PM CT',  teams: 'Argentina vs Algeria',   flag1: '🇦🇷', flag2: '🇩🇿', stage: 'Group J',       hot: true  },
+  { id: 'ecu-cur-jun20',  date: 'Sat Jun 20',  time: '7:00 PM CT',  teams: 'Ecuador vs Curaçao',     flag1: '🇪🇨', flag2: '🇨🇼', stage: 'Group E',       hot: false },
+  { id: 'tun-ned-jun25',  date: 'Thu Jun 25',  time: '6:00 PM CT',  teams: 'Tunisia vs Netherlands', flag1: '🇹🇳', flag2: '🇳🇱', stage: 'Group F',       hot: false },
+  { id: 'alg-aut-jun27',  date: 'Sat Jun 27',  time: '9:00 PM CT',  teams: 'Algeria vs Austria',     flag1: '🇩🇿', flag2: '🇦🇹', stage: 'Group J',       hot: false },
+  { id: 'r32-jul3',       date: 'Fri Jul 3',   time: '8:30 PM CT',  teams: 'Round of 32',            flag1: '⚽',   flag2: '⚽',   stage: 'Knockout',      hot: false },
+  { id: 'qf-jul11',       date: 'Sat Jul 11',  time: '8:00 PM CT',  teams: 'Quarterfinal',           flag1: '🏆',   flag2: '🏆',   stage: 'Quarterfinal',  hot: true  },
+]
+
+function ticketSearchUrl(base, match) {
+  const q = encodeURIComponent(`FIFA World Cup 2026 Kansas City ${match.teams}`)
+  return `${base}${q}`
+}
+
+/* ── Tickets section ────────────────────────────────────────────────── */
+function TicketsSection() {
+  const [alertEmail, setAlertEmail]   = useState('')
+  const [alertMatch, setAlertMatch]   = useState(KC_MATCHES[0].id)
+  const [alertStatus, setAlertStatus] = useState(null) // null | 'loading' | 'done' | 'error'
+
+  async function handleAlertSubmit(e) {
+    e.preventDefault()
+    if (!alertEmail.includes('@')) return
+    setAlertStatus('loading')
+    const match = KC_MATCHES.find(m => m.id === alertMatch)
+    const { error } = await supabase.from('ticket_alerts').insert({
+      email:      alertEmail,
+      match_id:   alertMatch,
+      match_name: match?.teams ?? alertMatch,
+    })
+    setAlertStatus(error ? 'error' : 'done')
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* Match cards */}
+      <div className="grid gap-3">
+        {KC_MATCHES.map(match => (
+          <div key={match.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+
+            {/* Match info */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="text-2xl flex-shrink-0">{match.flag1}{match.flag2}</div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-sm text-white">{match.teams}</span>
+                  {match.hot && (
+                    <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full">🔥 High demand</span>
+                  )}
+                </div>
+                <div className="text-white/50 text-xs mt-0.5">
+                  {match.date} · {match.time} · GEHA Field · {match.stage}
+                </div>
+              </div>
+            </div>
+
+            {/* Match weather */}
+            <MatchWeatherBadge matchId={match.id} />
+
+            {/* Ticket buy buttons */}
+            <div className="flex gap-2 flex-wrap flex-shrink-0">
+              <a
+                href={ticketSearchUrl(STUBHUB_BASE, match)}
+                target="_blank" rel="noopener noreferrer"
+                className="px-3 py-2 bg-[#1A1A1A] hover:bg-[#333] border border-white/10 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+              >
+                StubHub →
+              </a>
+              <a
+                href={ticketSearchUrl(VIVIDSEATS_BASE, match)}
+                target="_blank" rel="noopener noreferrer"
+                className="px-3 py-2 bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-purple-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+              >
+                Vivid Seats →
+              </a>
+              <a
+                href={ticketSearchUrl(SEATGEEK_BASE, match)}
+                target="_blank" rel="noopener noreferrer"
+                className="px-3 py-2 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/30 text-blue-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+              >
+                SeatGeek →
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Affiliate disclosure */}
+      <p className="text-white/25 text-[11px] text-center">
+        Vtopia earns a commission on ticket purchases through the links above at no extra cost to you.
+        Prices are set by sellers and change in real time.
+      </p>
+
+      {/* Price alert capture */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5">
+        <div className="font-bold text-amber-400 mb-1">🔔 Notify me when prices drop</div>
+        <p className="text-white/50 text-xs mb-4">We'll email you when ticket prices for your match fall below your target.</p>
+        {alertStatus === 'done' ? (
+          <div className="text-green-400 font-semibold text-sm">✅ You're on the list — we'll alert you when prices move.</div>
+        ) : (
+          <form onSubmit={handleAlertSubmit} className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={alertMatch}
+              onChange={e => setAlertMatch(e.target.value)}
+              className="bg-white/10 border border-white/15 text-white text-xs rounded-xl px-3 py-2.5 flex-1"
+            >
+              {KC_MATCHES.filter(m => !m.id.startsWith('r32') && !m.id.startsWith('qf')).map(m => (
+                <option key={m.id} value={m.id} className="bg-[#0D1B3E]">{m.date} — {m.teams}</option>
+              ))}
+            </select>
+            <input
+              type="email"
+              required
+              placeholder="your@email.com"
+              value={alertEmail}
+              onChange={e => setAlertEmail(e.target.value)}
+              className="bg-white/10 border border-white/15 text-white placeholder:text-white/30 text-xs rounded-xl px-3 py-2.5 flex-1"
+            />
+            <button
+              type="submit"
+              disabled={alertStatus === 'loading'}
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition disabled:opacity-50 flex-shrink-0"
+            >
+              {alertStatus === 'loading' ? 'Saving…' : 'Notify me'}
+            </button>
+          </form>
+        )}
+        {alertStatus === 'error' && (
+          <p className="text-red-400 text-xs mt-2">Something went wrong — try again.</p>
+        )}
+      </div>
+
+      {/* Bundle CTA */}
+      <div className="bg-gradient-to-r from-blue-900/60 to-[#034694]/60 border border-blue-500/20 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex-1">
+          <div className="font-bold text-white mb-1">⚽ Got your ticket? Now plan the full day.</div>
+          <div className="text-white/50 text-xs">Vtopia builds you a complete match-day itinerary — pre-game BBQ, fan zones, post-match bars — in 10 seconds.</div>
+        </div>
+        <Link
+          to="/itinerary"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded-xl transition flex-shrink-0"
+        >
+          Build my match day →
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 const SHARE_LANGUAGES = [
   { code: 'en', label: 'English',    flag: '🇺🇸' },
@@ -158,6 +344,7 @@ function MatchSchedule() {
             <div className="font-semibold text-sm">{m.teams}</div>
             <div className="text-white/50 text-xs mt-0.5">{m.venue}</div>
           </div>
+          <MatchWeatherBadge matchId={m.id} />
           <div className="text-right flex-shrink-0">
             <div className="text-amber-400 text-xs font-mono font-bold">{m.date}</div>
             <div className="text-white/30 text-[10px]">{m.note}</div>
@@ -236,10 +423,30 @@ export default function WorldCupPage() {
                 ✨ Build My Itinerary
               </Link>
             </div>
+            <div className="mt-8 flex justify-center">
+              <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 inline-block text-left">
+                <LocalClock
+                  timezone="America/Chicago"
+                  label="Kansas City"
+                  theme="dark"
+                  showOffsets={true}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-4 py-12 space-y-16">
+
+          {/* ── TICKETS ── */}
+          <section>
+            <div className="text-xs text-amber-400 uppercase tracking-widest font-bold mb-2">Tickets</div>
+            <h2 className="text-2xl font-bold mb-2">🎟️ Get Your KC Match Tickets</h2>
+            <p className="text-white/50 text-sm mb-6">
+              Primary tickets are sold out. Find verified resale tickets below — prices update in real time.
+            </p>
+            <TicketsSection />
+          </section>
 
           {/* ── MATCH SCHEDULE ── */}
           <section>
@@ -377,6 +584,40 @@ export default function WorldCupPage() {
               <p className="text-white/50 text-sm leading-relaxed">
                 Vtopia works on slow connections. Keep this guide open in your browser — key pages are cached so you can access them even when signal drops in the crowd.
               </p>
+            </div>
+          </section>
+
+        </div>
+
+          {/* ── DEEP-DIVE GUIDES ── */}
+          <section>
+            <div className="text-xs text-amber-400 uppercase tracking-widest font-bold mb-2">Fan Guides</div>
+            <h2 className="text-2xl font-bold mb-6">📖 Deep-Dive KC Guides</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link to="/world-cup/kansas-city-guide" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🗺️</div>
+                <div className="font-bold mb-1">Complete KC Visitor Guide</div>
+                <div className="text-white/40 text-xs">Neighborhoods, BBQ, transport, fan zones — everything in one guide.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/argentina" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🇦🇷</div>
+                <div className="font-bold mb-1">Argentina Fans Guide</div>
+                <div className="text-white/40 text-xs">June 16 match, Argentine food in KC, fan zones. En inglés y español.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/netherlands" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">🇳🇱</div>
+                <div className="font-bold mb-1">Netherlands Fans Guide</div>
+                <div className="text-white/40 text-xs">Dutch base camp is KC. Training ground, orange fan-walk, June 25 match.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
+              <Link to="/world-cup/match-day-plan" className="block p-5 bg-white/5 border border-white/10 hover:border-amber-500/40 rounded-2xl transition group">
+                <div className="text-3xl mb-2">📋</div>
+                <div className="font-bold mb-1">Perfect Match Day Plan</div>
+                <div className="text-white/40 text-xs">Hour-by-hour KC schedules for each match — from 8 AM to post-match.</div>
+                <div className="text-amber-400 text-xs font-semibold mt-3 group-hover:underline">Read guide →</div>
+              </Link>
             </div>
           </section>
 
