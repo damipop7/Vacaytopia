@@ -180,6 +180,14 @@ export default function BrowsePage() {
       return (b._score ?? 0) - (a._score ?? 0) // Recommended = by score
     })
 
+  // IDs shown in "Personalized for you" — excluded from main grid to avoid duplicates
+  let personalizedIds = new Set()
+  if (user && quizData?.interests?.length && !isLoading) {
+    const catMap = { food: 'Food & Drink', outdoors: 'Outdoors', nightlife: 'Nightlife', sports: 'Sports', arts: 'Arts & Culture', wellness: 'Wellness' }
+    const interestCats = new Set(quizData.interests.map(i => catMap[i]).filter(Boolean))
+    experiences.filter(e => interestCats.has(e.category)).slice(0, 6).forEach(e => personalizedIds.add(e.id))
+  }
+
   const cityName    = CITIES.find(c => c.value === city)?.label.split(' ').slice(1).join(' ') || 'All Cities'
   const isComingSoon = city !== 'all' && !LIVE_CITIES.has(city)
 
@@ -670,7 +678,7 @@ export default function BrowsePage() {
         {/* Grid */}
         {!isLoading && filtered.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filtered.map((exp, idx) => (
+            {filtered.filter(e => !personalizedIds.has(e.id)).map((exp, idx) => (
               <Fragment key={exp.id}>
                 <ExperienceCard experience={exp} showForYou distanceMi={exp._distMi} />
                 {idx === 5 && (
