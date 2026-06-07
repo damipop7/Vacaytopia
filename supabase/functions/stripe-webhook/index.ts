@@ -45,6 +45,17 @@ async function verifyStripeSignature(
   }
 }
 
+// Escape user-controlled content before embedding in HTML emails to prevent XSS.
+// Even in transactional email, injected HTML can redirect links or load tracking pixels.
+function escHtml(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 serve(async (req) => {
   // Only accept POST
   if (req.method !== 'POST') {
@@ -55,16 +66,22 @@ serve(async (req) => {
   const signature = req.headers.get('stripe-signature') ?? ''
   const secret    = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
 
-  // Verify signature if webhook secret is set
-  if (secret) {
-    const valid = await verifyStripeSignature(body, signature, secret)
-    if (!valid) {
-      console.error('Invalid Stripe webhook signature')
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+  // Always verify signature — reject webhook if secret is not configured in env
+  if (!secret) {
+    console.error('STRIPE_WEBHOOK_SECRET is not set — rejecting unverifiable webhook')
+    return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const valid = await verifyStripeSignature(body, signature, secret)
+  if (!valid) {
+    console.error('Invalid Stripe webhook signature')
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   let event: { type: string; data: { object: Record<string, unknown> } }
@@ -140,7 +157,7 @@ serve(async (req) => {
       const expTitle = exp?.title ?? 'your experience'
       const providerEmail = exp?.provider_email
 
-      // 1. Guest confirmation
+      // 1. Guest confirmation — HTML-escape all user-controlled values
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
@@ -149,14 +166,14 @@ serve(async (req) => {
           to: booking.contact_email,
           subject: `Booking confirmed — ${expTitle}`,
           html: `<h2>You're booked! 🎉</h2>
-<p>Hi ${booking.contact_name},</p>
-<p>Your booking for <strong>${expTitle}</strong> is confirmed.</p>
+<p>Hi ${escHtml(booking.contact_name)},</p>
+<p>Your booking for <strong>${escHtml(expTitle)}</strong> is confirmed.</p>
 <ul>
-  <li><strong>Reference:</strong> ${booking.booking_reference}</li>
-  <li><strong>Date:</strong> ${booking.booking_date}</li>
-  <li><strong>Guests:</strong> ${booking.guest_count}</li>
-  <li><strong>Total paid:</strong> $${booking.total_amount}</li>
-  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${booking.special_requests}</li>` : ''}
+  <li><strong>Reference:</strong> ${escHtml(booking.booking_reference)}</li>
+  <li><strong>Date:</strong> ${escHtml(booking.booking_date)}</li>
+  <li><strong>Guests:</strong> ${escHtml(booking.guest_count)}</li>
+  <li><strong>Total paid:</strong> $${escHtml(booking.total_amount)}</li>
+  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${escHtml(booking.special_requests)}</li>` : ''}
 </ul>
 <p><strong>Cancellation policy:</strong> Cancel 24 hours before for a full refund. Contact <a href="mailto:support@vtopia.world">support@vtopia.world</a> with your reference number.</p>
 <p>See you there! — The Vtopia team</p>`,
@@ -175,16 +192,16 @@ serve(async (req) => {
             subject: `New Vtopia Booking — ${expTitle} — ${booking.booking_date}`,
             html: `<h2>New booking via Vtopia</h2>
 <ul>
-  <li><strong>Experience:</strong> ${expTitle}</li>
-  <li><strong>Booking ref:</strong> ${booking.booking_reference}</li>
-  <li><strong>Guest name:</strong> ${booking.contact_name}</li>
-  <li><strong>Guest email:</strong> ${booking.contact_email}</li>
-  <li><strong>Party size:</strong> ${booking.guest_count}</li>
-  <li><strong>Date:</strong> ${booking.booking_date}</li>
-  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${booking.special_requests}</li>` : ''}
-  <li><strong>Amount paid:</strong> $${booking.total_amount}</li>
+  <li><strong>Experience:</strong> ${escHtml(expTitle)}</li>
+  <li><strong>Booking ref:</strong> ${escHtml(booking.booking_reference)}</li>
+  <li><strong>Guest name:</strong> ${escHtml(booking.contact_name)}</li>
+  <li><strong>Guest email:</strong> ${escHtml(booking.contact_email)}</li>
+  <li><strong>Party size:</strong> ${escHtml(booking.guest_count)}</li>
+  <li><strong>Date:</strong> ${escHtml(booking.booking_date)}</li>
+  ${booking.special_requests ? `<li><strong>Special requests:</strong> ${escHtml(booking.special_requests)}</li>` : ''}
+  <li><strong>Amount paid:</strong> $${escHtml(booking.total_amount)}</li>
 </ul>
-<p>Please reply to this email to confirm you have the reservation, or contact the guest directly at ${booking.contact_email}.</p>
+<p>Please reply to this email to confirm you have the reservation, or contact the guest directly at ${escHtml(booking.contact_email)}.</p>
 <p>Questions? Contact <a href="mailto:support@vtopia.world">support@vtopia.world</a></p>`,
           }),
         }).catch(e => console.error('Provider email failed:', e))

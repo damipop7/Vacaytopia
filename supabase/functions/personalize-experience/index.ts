@@ -1,12 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const SUPABASE_URL      = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
-};
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+
+// Restrict to known origins — wildcard CORS is too permissive for an AI cost endpoint
+const ALLOWED_ORIGINS = new Set([
+  "https://www.vtopia.world",
+  "https://vtopia.world",
+  "http://localhost:5173",
+  "http://localhost:4173",
+]);
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://www.vtopia.world";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
+  };
+}
 
 const BUDGET_LABELS: Record<string, string> = {
   budget: "budget-conscious",
@@ -32,6 +49,18 @@ const INTEREST_LABELS: Record<string, string> = {
   music: "live music",
 };
 
+// Strip characters that could break prompt structure or inject instructions
+function sanitizeForPrompt(text: unknown, maxLen = 300): string {
+  if (typeof text !== "string") return "";
+  return text
+    .slice(0, maxLen)
+    .replace(/[<>]/g, "")                // remove HTML tags
+    .replace(/\n{3,}/g, "\n\n")          // collapse excessive newlines
+    .replace(/={3,}/g, "")               // remove horizontal rules used as section dividers
+    .replace(/ignore.{0,30}(previous|above|instruction)/gi, "") // obvious injection attempts
+    .trim();
+}
+
 export function buildPersonalizePrompt(experience: Record<string, unknown>, answers: Record<string, unknown>): string {
   const interests = Array.isArray(answers.interests)
     ? (answers.interests as string[]).map((i) => INTEREST_LABELS[i] ?? i).join(", ")
@@ -39,7 +68,9 @@ export function buildPersonalizePrompt(experience: Record<string, unknown>, answ
 
   const budget   = BUDGET_LABELS[(answers.budget as string) ?? "mid"] ?? "mid-range";
   const traveler = TRAVELER_LABELS[(answers.traveler as string) ?? "solo"] ?? "traveler";
-  const extras   = answers.extras ? ` Additional context: ${answers.extras}.` : "";
+  // Sanitize free-text extras — limit length and strip injection patterns
+  const extraRaw = sanitizeForPrompt(answers.extras, 200);
+  const extras   = extraRaw ? ` Additional context: ${extraRaw}.` : "";
 
   const price = (experience.price_per_person as number) > 0
     ? `$${experience.price_per_person} per person`
@@ -56,13 +87,30 @@ Traveler profile: ${traveler} with a ${budget} budget, interested in ${interests
 }
 
 serve(async (req) => {
+  const cors = corsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: cors });
   }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 405, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+
+  // Require a valid user JWT — rejects anon key and unauthenticated requests
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Sign in to use personalized recommendations" }), {
+      status: 401, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    return new Response(JSON.stringify({ error: "Sign in to use personalized recommendations" }), {
+      status: 401, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -71,20 +119,20 @@ serve(async (req) => {
     body = await req.json();
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 400, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
   const { experience, answers } = body;
   if (!experience?.id || !answers) {
     return new Response(JSON.stringify({ error: "experience and answers are required" }), {
-      status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 400, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
   if (!ANTHROPIC_API_KEY) {
-    return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not set" }), {
-      status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ error: "Service unavailable" }), {
+      status: 503, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -105,10 +153,9 @@ serve(async (req) => {
   });
 
   if (!anthropicRes.ok) {
-    const err = await anthropicRes.text();
-    console.error("Anthropic error:", err);
+    console.error("Anthropic error:", anthropicRes.status);
     return new Response(JSON.stringify({ error: "AI generation failed" }), {
-      status: 502, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 502, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -116,6 +163,6 @@ serve(async (req) => {
   const blurb  = (result.content?.[0]?.text ?? "").trim();
 
   return new Response(JSON.stringify({ blurb }), {
-    status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    status: 200, headers: { ...cors, "Content-Type": "application/json" },
   });
 });
