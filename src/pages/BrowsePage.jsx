@@ -5,6 +5,8 @@ import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
 import { useAuthStore } from '../store/authStore'
 import { useNearMe } from '../hooks/useNearMe'
+import { useWeather } from '../hooks/useWeather'
+import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
 import { QUIZ_INTERESTS } from '../lib/travelQuiz'
@@ -90,6 +92,11 @@ export default function BrowsePage() {
 
   const { status: nearStatus, coords: nearCoords, request: requestNear, clear: clearNear } = useNearMe()
   const nearMeActive = nearStatus === 'granted'
+  const [goodForToday, setGoodForToday] = useState(false)
+  const { weather: todayWeather } = useWeather('kansas-city')
+  const todayIsRainy = todayWeather?.[0]?.isRainy ?? false
+  const INDOOR_CATS = new Set(['Food & Drink', 'Arts & Culture', 'Nightlife', 'Wellness'])
+  const OUTDOOR_CATS = new Set(['Outdoors', 'Sports'])
 
   function toggleNearMe() {
     if (nearMeActive) {
@@ -154,6 +161,10 @@ export default function BrowsePage() {
       e.city.toLowerCase().includes(search.toLowerCase())
     )
     .filter(e => !openNow || isOpenNow(e))
+    .filter(e => {
+      if (!goodForToday) return true
+      return todayIsRainy ? INDOOR_CATS.has(e.category) : OUTDOOR_CATS.has(e.category)
+    })
     // Near Me: hide experiences without coords, apply radius
     .filter(e => {
       if (!nearMeActive) return true
@@ -522,6 +533,23 @@ export default function BrowsePage() {
               Open now
             </button>
 
+            {/* Good for today — smart weather filter, only when weather data available */}
+            {todayWeather?.[0] && (
+              <button
+                type="button"
+                onClick={() => setGoodForToday(g => !g)}
+                aria-pressed={goodForToday}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all ${
+                  goodForToday
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
+                }`}
+                title={todayIsRainy ? 'Filters to indoor experiences — it\'s rainy today' : 'Filters to outdoor experiences — great weather today'}
+              >
+                {todayIsRainy ? '🌧 Indoor today' : '☀️ Good outside'}
+              </button>
+            )}
+
             <div className="flex rounded-pill border border-blue-brand/15 p-0.5 bg-white">
               {['grid', 'map'].map(m => (
                 <button
@@ -550,6 +578,13 @@ export default function BrowsePage() {
             </div>
           </div>
         </div>
+
+        {/* Today's weather context bar — light strip above results */}
+        {todayWeather?.[0] && (
+          <div className="mb-4">
+            <WeatherWidget citySlug="kansas-city" variant="inline" theme="light" />
+          </div>
+        )}
 
         {/* Near Me — permission denied / unavailable notice */}
         {(nearStatus === 'denied' || nearStatus === 'unavailable') && (

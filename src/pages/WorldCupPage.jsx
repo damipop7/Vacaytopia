@@ -2,6 +2,34 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabase'
+import LocalClock from '../components/ui/LocalClock'
+
+// Climatic KC weather estimates for each match (forecast API range is 7 days;
+// matches are further out so we use historical June/July averages for KC)
+const MATCH_WEATHER = {
+  'arg-alg-jun16':  { tempHigh: 84, tempLow: 65, desc: 'Partly cloudy',     rainChance: 35, icon: '02d' },
+  'ecu-cur-jun20':  { tempHigh: 86, tempLow: 68, desc: 'Partly cloudy',     rainChance: 40, icon: '02d' },
+  'tun-ned-jun25':  { tempHigh: 88, tempLow: 70, desc: 'Chance of storms',  rainChance: 45, icon: '10d' },
+  'alg-aut-jun27':  { tempHigh: 88, tempLow: 70, desc: 'Chance of storms',  rainChance: 40, icon: '10d' },
+  'r32-jul3':       { tempHigh: 90, tempLow: 72, desc: 'Hot & partly cloudy', rainChance: 35, icon: '02d' },
+  'qf-jul11':       { tempHigh: 91, tempLow: 73, desc: 'Hot & humid',       rainChance: 30, icon: '02d' },
+}
+
+function MatchWeatherBadge({ matchId }) {
+  const w = MATCH_WEATHER[matchId]
+  if (!w) return null
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl flex-shrink-0">
+      <img src={`https://openweathermap.org/img/wn/${w.icon}.png`} alt={w.desc} width={24} height={24} className="opacity-80" />
+      <div>
+        <div className="text-white text-xs font-bold leading-none">{w.tempHigh}°F</div>
+        <div className="text-white/40 text-[10px] leading-none mt-0.5">
+          {w.rainChance}% rain
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ── Feature flag guard ─────────────────────────────────────────────── */
 const WC_ENABLED = import.meta.env.VITE_FEATURE_WORLD_CUP === 'true'
@@ -74,12 +102,12 @@ const GETTING_AROUND = [
 ]
 
 const MATCH_SCHEDULE_STUB = [
-  { date: 'Tue 16 Jun · 8:00 PM CT', teams: 'Argentina vs Algeria',   venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 19' },
-  { date: 'Sat 20 Jun · 7:00 PM CT', teams: 'Ecuador vs Curaçao',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group E — Match 34' },
-  { date: 'Thu 25 Jun · 6:00 PM CT', teams: 'Tunisia vs Netherlands', venue: 'GEHA Field at Arrowhead Stadium', note: 'Group F — Match 58' },
-  { date: 'Sat 27 Jun · 9:00 PM CT', teams: 'Algeria vs Austria',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 69' },
-  { date: 'Fri  3 Jul · 8:30 PM CT', teams: 'Round of 32',            venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 87 — teams TBD after group stage' },
-  { date: 'Sat 11 Jul · 8:00 PM CT', teams: 'Quarter-Final',          venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 100 — teams TBD after Round of 32' },
+  { id: 'arg-alg-jun16', date: 'Tue 16 Jun · 8:00 PM CT', teams: 'Argentina vs Algeria',   venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 19' },
+  { id: 'ecu-cur-jun20', date: 'Sat 20 Jun · 7:00 PM CT', teams: 'Ecuador vs Curaçao',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group E — Match 34' },
+  { id: 'tun-ned-jun25', date: 'Thu 25 Jun · 6:00 PM CT', teams: 'Tunisia vs Netherlands', venue: 'GEHA Field at Arrowhead Stadium', note: 'Group F — Match 58' },
+  { id: 'alg-aut-jun27', date: 'Sat 27 Jun · 9:00 PM CT', teams: 'Algeria vs Austria',     venue: 'GEHA Field at Arrowhead Stadium', note: 'Group J — Match 69' },
+  { id: 'r32-jul3',      date: 'Fri  3 Jul · 8:30 PM CT', teams: 'Round of 32',            venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 87 — teams TBD after group stage' },
+  { id: 'qf-jul11',      date: 'Sat 11 Jul · 8:00 PM CT', teams: 'Quarter-Final',          venue: 'GEHA Field at Arrowhead Stadium', note: 'Match 100 — teams TBD after Round of 32' },
 ]
 
 // ── KC match data with ticket affiliate search links ─────────────────────────
@@ -145,6 +173,9 @@ function TicketsSection() {
                 </div>
               </div>
             </div>
+
+            {/* Match weather */}
+            <MatchWeatherBadge matchId={match.id} />
 
             {/* Ticket buy buttons */}
             <div className="flex gap-2 flex-wrap flex-shrink-0">
@@ -313,6 +344,7 @@ function MatchSchedule() {
             <div className="font-semibold text-sm">{m.teams}</div>
             <div className="text-white/50 text-xs mt-0.5">{m.venue}</div>
           </div>
+          <MatchWeatherBadge matchId={m.id} />
           <div className="text-right flex-shrink-0">
             <div className="text-amber-400 text-xs font-mono font-bold">{m.date}</div>
             <div className="text-white/30 text-[10px]">{m.note}</div>
@@ -390,6 +422,16 @@ export default function WorldCupPage() {
               <Link to="/itinerary" className="px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-full transition text-base">
                 ✨ Build My Itinerary
               </Link>
+            </div>
+            <div className="mt-8 flex justify-center">
+              <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 inline-block text-left">
+                <LocalClock
+                  timezone="America/Chicago"
+                  label="Kansas City"
+                  theme="dark"
+                  showOffsets={true}
+                />
+              </div>
             </div>
           </div>
         </div>

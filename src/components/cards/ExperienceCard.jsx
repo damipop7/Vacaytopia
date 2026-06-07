@@ -3,6 +3,7 @@ import { useWishlist } from '../../hooks/useWishlist'
 import { Heart, MapPin, Clock, Star, ExternalLink, Navigation } from 'lucide-react'
 import { viatorSearchUrl, openTableUrl } from '../../lib/affiliates.config'
 import { formatDistance, walkMinutes } from '../../lib/geo'
+import { isOpenNow } from '../../lib/openingHours'
 
 const GRADIENTS = {
   'ci-mia': 'from-[#b2e8f8] to-[#7dd8f5]',
@@ -253,8 +254,10 @@ export default function ExperienceCard({ experience, showForYou = false, distanc
     id, title, city, category,
     price_per_person, price_tier,
     duration_label, rating, review_count,
-    image_url, image_gradient, is_sponsored, _score, tags,
+    image_url, image_gradient, is_sponsored, _score, tags, hours,
   } = experience
+
+  const openStatus = isOpenNow(hours) // null = no data, true = open, false = closed
 
   const { shown: highlights, overflow: highlightOverflow } = pickHighlights(tags)
 
@@ -346,6 +349,13 @@ export default function ExperienceCard({ experience, showForYou = false, distanc
           {duration_label && <><span>·</span><span className="flex items-center gap-0.5"><Clock size={11} aria-hidden="true" />{duration_label}</span></>}
           {review_count > 0 && <><span>·</span><span>{review_count.toLocaleString()} reviews</span></>}
           {rating > 0 && <><span>·</span><span className="flex items-center gap-0.5 text-gold-brand"><Star size={11} aria-hidden="true" fill="currentColor" />{rating}</span></>}
+          {openStatus !== null && (
+            <><span>·</span>
+            <span className={`flex items-center gap-0.5 font-medium ${openStatus ? 'text-green-600' : 'text-red-400'}`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${openStatus ? 'bg-green-500' : 'bg-red-400'}`} aria-hidden="true" />
+              {openStatus ? 'Open' : 'Closed'}
+            </span></>
+          )}
         </div>
 
         {highlights.length > 0 && (

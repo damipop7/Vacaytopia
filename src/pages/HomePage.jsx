@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
+import { useWeather } from '../hooks/useWeather'
+import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
 import OnboardingQuiz from '../components/ui/OnboardingQuiz'
@@ -99,6 +101,15 @@ export default function HomePage() {
     city: selectedCity?.id?.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) || undefined,
     limit: 6,
   })
+  const { weather: kcWeather } = useWeather('kansas-city')
+  const todayKC = kcWeather?.[0]
+  const weatherSubtitle = todayKC
+    ? todayKC.isRainy
+      ? `It's rainy in KC today — perfect for indoor food, art, and culture.`
+      : todayKC.isHot
+      ? `It's ${todayKC.tempHigh}° and sunny in KC — great day for outdoor adventures.`
+      : `It's ${todayKC.tempHigh}° in Kansas City today — a great day to explore.`
+    : null
 
   return (
     <div style={{ background:'var(--bg)' }}>
@@ -146,9 +157,15 @@ export default function HomePage() {
             </span>
           </h1>
 
-          <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-md">
+          <p className="text-white/70 text-lg leading-relaxed mb-4 max-w-md">
             Vtopia matches your passions and budget to the best experiences in any city — food, events, outdoors, nightlife, and so much more.
           </p>
+          {weatherSubtitle && (
+            <div className="flex items-center gap-2 mb-6">
+              <WeatherWidget citySlug="kansas-city" variant="inline" theme="dark" className="text-sm" />
+              <span className="text-white/50 text-sm hidden sm:inline">· {weatherSubtitle}</span>
+            </div>
+          )}
 
 
 
