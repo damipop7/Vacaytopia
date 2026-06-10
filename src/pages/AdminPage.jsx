@@ -568,7 +568,10 @@ function UsersTab() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const { data } = await supabase.rpc('admin_get_users')
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name, role, is_verified, home_city, avatar_url, created_at')
+        .order('created_at', { ascending: false })
       setRows(data ?? [])
       setLoading(false)
     }
@@ -619,21 +622,10 @@ function UsersTab() {
         </span>
       )
     },
-    { key: 'provider', label: 'Signed up via', render: r => {
-        const label = r.provider === 'google' ? 'Google' : r.provider === 'email' ? 'Email' : (r.provider ?? 'Email')
-        const style = r.provider === 'google'
-          ? 'bg-red-50 text-red-600'
-          : 'bg-blue-tint text-blue-brand'
-        const confirmed = r.email_confirmed
-        return (
-          <div className="flex flex-col gap-0.5">
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full w-fit ${style}`}>{label}</span>
-            {!confirmed && <span className="text-[10px] text-amber-500 font-medium">Unconfirmed</span>}
-          </div>
-        )
-      }
+    { key: 'verified', label: 'Verified', render: r => r.is_verified
+        ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">Verified</span>
+        : <span className="text-gray-300 text-xs">—</span>
     },
-    { key: 'last_sign_in', label: 'Last seen', render: r => r.last_sign_in_at ? fmtDate(r.last_sign_in_at) : <span className="text-gray-300">Never</span> },
     { key: 'joined',  label: 'Joined', render: r => fmtDate(r.created_at) },
     { key: 'actions', label: 'Set role', render: r => (
         updating[r.id]
