@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useForm, ValidationError } from '@formspree/react'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
@@ -91,35 +92,7 @@ function useGlobeImmersion() {
 }
 
 function EmailCapture() {
-  const [email, setEmail]     = useState('')
-  const [status, setStatus]   = useState('idle') // idle | loading | success | error
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!email) return
-    setStatus('loading')
-    try {
-      // Posts to Formspree — swap VITE_FORMSPREE_ID for your form ID once created at formspree.io
-      const formId = import.meta.env.VITE_FORMSPREE_ID
-      if (!formId) {
-        // Dev fallback: just log so the form doesn't break locally
-        console.info('[EmailCapture] No VITE_FORMSPREE_ID set — submission skipped:', email)
-        setStatus('success')
-        setEmail('')
-        return
-      }
-      const res = await fetch(`https://formspree.io/f/${formId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) throw new Error('submission failed')
-      setStatus('success')
-      setEmail('')
-    } catch {
-      setStatus('error')
-    }
-  }
+  const [state, handleSubmit] = useForm('mwvjnlgl')
 
   return (
     <section className="bg-gradient-to-br from-blue-brand to-[#0D1B3E] py-16 px-6 text-center">
@@ -132,31 +105,31 @@ function EmailCapture() {
           Join visitors already planning their Kansas City World Cup weekend with Vtopia.
         </p>
 
-        {status === 'success' ? (
+        {state.succeeded ? (
           <div className="flex items-center justify-center gap-2 text-green-400 font-semibold text-lg">
             <span>✅</span> You&apos;re on the list!
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="flex-1 px-4 py-3 rounded-pill bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold-brand text-sm"
-            />
+            <div className="flex-1 flex flex-col gap-1">
+              <input
+                id="email"
+                type="email"
+                name="email"
+                required
+                placeholder="your@email.com"
+                className="w-full px-4 py-3 rounded-pill bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold-brand text-sm"
+              />
+              <ValidationError field="email" errors={state.errors} className="text-red-400 text-xs text-left px-2" />
+            </div>
             <button
               type="submit"
-              disabled={status === 'loading'}
+              disabled={state.submitting}
               className="px-6 py-3 rounded-pill bg-gold-brand text-white font-bold text-sm hover:bg-gold-brand/90 transition disabled:opacity-60 whitespace-nowrap"
             >
-              {status === 'loading' ? 'Joining…' : 'Get insider tips →'}
+              {state.submitting ? 'Joining…' : 'Get insider tips →'}
             </button>
           </form>
-        )}
-        {status === 'error' && (
-          <p className="text-red-400 text-xs mt-3">Something went wrong — try again or email us directly.</p>
         )}
         <p className="text-white/30 text-xs mt-4">No spam. Unsubscribe any time.</p>
       </div>
