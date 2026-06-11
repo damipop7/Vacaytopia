@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
 import { CITY_LABELS } from "../lib/cities";
@@ -218,8 +219,28 @@ export default function ItineraryView() {
     ? Math.round((new Date(record.end_date) - new Date(record.start_date)) / (1000 * 60 * 60 * 24))
     : null;
 
+  const shareTitle = `${itinerary.headline} | Vtopia`
+  const shareDesc  = itinerary.overview
+    ? itinerary.overview.slice(0, 155) + (itinerary.overview.length > 155 ? '…' : '')
+    : `A ${nights ? `${nights}-night ` : ''}AI-planned trip to ${cityLabel} — built with Vtopia.`
+  const shareUrl   = `https://www.vtopia.world/itinerary/${record.id}`
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
+      <Helmet>
+        <title>{shareTitle}</title>
+        <meta name="description" content={shareDesc} />
+        <meta property="og:title"       content={shareTitle} />
+        <meta property="og:description" content={shareDesc} />
+        <meta property="og:url"         content={shareUrl} />
+        <meta property="og:image"       content="https://www.vtopia.world/og-image.png" />
+        <meta property="og:type"        content="article" />
+        <meta name="twitter:card"        content="summary_large_image" />
+        <meta name="twitter:title"       content={shareTitle} />
+        <meta name="twitter:description" content={shareDesc} />
+        <meta name="twitter:image"       content="https://www.vtopia.world/og-image.png" />
+      </Helmet>
+
       {/* CTA banner — visible to visitors who didn't generate this plan */}
       <div className="bg-gradient-to-r from-blue-600/20 to-amber-500/10 border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">

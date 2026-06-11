@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useForm, ValidationError } from '@formspree/react'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
@@ -88,6 +89,52 @@ function useGlobeImmersion() {
   )
 
   return { immersion, onGlobeAltitude }
+}
+
+function EmailCapture() {
+  const [state, handleSubmit] = useForm('mwvjnlgl')
+
+  return (
+    <section className="bg-gradient-to-br from-blue-brand to-[#0D1B3E] py-16 px-6 text-center">
+      <div className="max-w-xl mx-auto">
+        <div className="text-xs font-bold tracking-widest uppercase text-gold-brand mb-3">Stay in the loop</div>
+        <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
+          KC insider tips, World Cup guides & new experiences — free
+        </h2>
+        <p className="text-white/50 text-sm mb-8">
+          Join visitors already planning their Kansas City World Cup weekend with Vtopia.
+        </p>
+
+        {state.succeeded ? (
+          <div className="flex items-center justify-center gap-2 text-green-400 font-semibold text-lg">
+            <span>✅</span> You&apos;re on the list!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <div className="flex-1 flex flex-col gap-1">
+              <input
+                id="email"
+                type="email"
+                name="email"
+                required
+                placeholder="your@email.com"
+                className="w-full px-4 py-3 rounded-pill bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold-brand text-sm"
+              />
+              <ValidationError field="email" errors={state.errors} className="text-red-400 text-xs text-left px-2" />
+            </div>
+            <button
+              type="submit"
+              disabled={state.submitting}
+              className="px-6 py-3 rounded-pill bg-gold-brand text-white font-bold text-sm hover:bg-gold-brand/90 transition disabled:opacity-60 whitespace-nowrap"
+            >
+              {state.submitting ? 'Joining…' : 'Get insider tips →'}
+            </button>
+          </form>
+        )}
+        <p className="text-white/30 text-xs mt-4">No spam. Unsubscribe any time.</p>
+      </div>
+    </section>
+  )
 }
 
 export default function HomePage() {
@@ -366,6 +413,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ── EMAIL CAPTURE ── */}
+      <EmailCapture />
 
       {/* ── TRUST FOOTER STRIP ── */}
       <section className="bg-[#0D1B3E] py-10 px-6">
