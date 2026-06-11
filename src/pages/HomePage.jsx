@@ -90,6 +90,80 @@ function useGlobeImmersion() {
   return { immersion, onGlobeAltitude }
 }
 
+function EmailCapture() {
+  const [email, setEmail]     = useState('')
+  const [status, setStatus]   = useState('idle') // idle | loading | success | error
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!email) return
+    setStatus('loading')
+    try {
+      // Posts to Formspree — swap VITE_FORMSPREE_ID for your form ID once created at formspree.io
+      const formId = import.meta.env.VITE_FORMSPREE_ID
+      if (!formId) {
+        // Dev fallback: just log so the form doesn't break locally
+        console.info('[EmailCapture] No VITE_FORMSPREE_ID set — submission skipped:', email)
+        setStatus('success')
+        setEmail('')
+        return
+      }
+      const res = await fetch(`https://formspree.io/f/${formId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error('submission failed')
+      setStatus('success')
+      setEmail('')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  return (
+    <section className="bg-gradient-to-br from-blue-brand to-[#0D1B3E] py-16 px-6 text-center">
+      <div className="max-w-xl mx-auto">
+        <div className="text-xs font-bold tracking-widest uppercase text-gold-brand mb-3">Stay in the loop</div>
+        <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
+          KC insider tips, World Cup guides & new experiences — free
+        </h2>
+        <p className="text-white/50 text-sm mb-8">
+          Join visitors already planning their Kansas City World Cup weekend with Vtopia.
+        </p>
+
+        {status === 'success' ? (
+          <div className="flex items-center justify-center gap-2 text-green-400 font-semibold text-lg">
+            <span>✅</span> You&apos;re on the list!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="flex-1 px-4 py-3 rounded-pill bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-gold-brand text-sm"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="px-6 py-3 rounded-pill bg-gold-brand text-white font-bold text-sm hover:bg-gold-brand/90 transition disabled:opacity-60 whitespace-nowrap"
+            >
+              {status === 'loading' ? 'Joining…' : 'Get insider tips →'}
+            </button>
+          </form>
+        )}
+        {status === 'error' && (
+          <p className="text-red-400 text-xs mt-3">Something went wrong — try again or email us directly.</p>
+        )}
+        <p className="text-white/30 text-xs mt-4">No spam. Unsubscribe any time.</p>
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
@@ -366,6 +440,9 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ── EMAIL CAPTURE ── */}
+      <EmailCapture />
 
       {/* ── TRUST FOOTER STRIP ── */}
       <section className="bg-[#0D1B3E] py-10 px-6">
