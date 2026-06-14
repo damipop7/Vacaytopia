@@ -5,17 +5,20 @@ import { ONBOARD_INTERESTS_KEY } from '../lib/appUrl'
 import VtopiaLogo from '../components/ui/VtopiaLogo'
 
 export default function AuthPage() {
-  const [tab,       setTab]       = useState('signup')
+  const location    = useLocation()
+  const prefill     = location.state?.prefillEmail || ''
+  const prefillTab  = location.state?.tab || 'signup'
+
+  const [tab,       setTab]       = useState(prefillTab)
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState('')
-  const [form,      setForm]      = useState({ firstName:'', lastName:'', email:'', password:'' })
+  const [form,      setForm]      = useState({ firstName:'', lastName:'', email: prefill, password:'' })
   const googleBtnRef = useRef(null)
 
   const { signUp, signIn, signInWithIdToken } = useAuthStore()
   const authLoading = useAuthStore(s => s.loading)
   const user        = useAuthStore(s => s.user)
   const navigate    = useNavigate()
-  const location    = useLocation()
   const from        = location.state?.from?.pathname || '/browse'
 
   useEffect(() => {
