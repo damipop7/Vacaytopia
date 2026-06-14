@@ -10,6 +10,7 @@ import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceCard from '../components/cards/ExperienceCard'
 import BrandMark from '../components/ui/BrandMark'
 import OnboardingQuiz from '../components/ui/OnboardingQuiz'
+import SignUpGateModal from '../components/ui/SignUpGateModal'
 import { Utensils, Trees, Moon, Trophy, Palette, Heart as WellnessIcon } from 'lucide-react'
 
 const VtopiaGlobe = lazy(() => import('../components/ui/VtopiaGlobe'))
@@ -161,8 +162,10 @@ export default function HomePage() {
 
   return (
     <div style={{ background:'var(--bg)' }}>
-      {/* Suppress popup for signed-in users who already completed the full quiz */}
-      {!existingQuiz && <OnboardingQuiz />}
+      {/* Sign-up gate — shown to unauthenticated visitors only, once per session */}
+      {!user && <SignUpGateModal />}
+      {/* Persona quiz — shown to logged-in users who haven't completed the interest quiz */}
+      {user && !existingQuiz && <OnboardingQuiz />}
 
       {/* ── HERO — Globe Section (globe zoom “immerses” layout — headline eases away) ── */}
       <section
