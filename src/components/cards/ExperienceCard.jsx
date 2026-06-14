@@ -130,6 +130,7 @@ function joinParts(raw) {
 }
 
 // Returns a human label for a single raw tag, or null to suppress it.
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatTag(raw) {
   if (!raw || typeof raw !== 'string') return null
   const tag = raw.trim()
@@ -194,6 +195,7 @@ function keyPriority(raw) {
   return { cuisine: 10, sport: 9, leisure: 6, tourism: 5, amenity: 4 }[key] ?? 1
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function pickHighlights(tags, max = 3) {
   if (!tags?.length) return { shown: [], overflow: 0 }
 

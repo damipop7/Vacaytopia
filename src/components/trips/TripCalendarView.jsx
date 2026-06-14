@@ -10,6 +10,7 @@ const STATUS_COLOR = {
 }
 
 // Reshapes flat experiences list into { [dayNumber]: { [slot]: item[] } }
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildCalendarGrid(days, experiences) {
   const grid = {}
   for (const { day } of days) {

@@ -22,10 +22,10 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, cors: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 }
 
@@ -48,13 +48,13 @@ serve(async (req) => {
 
   // ── Auth: verify caller is an admin ───────────────────────────────────
   const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
-  if (!jwt) return json({ error: "Unauthorized" }, 401);
+  if (!jwt) return json({ error: "Unauthorized" }, 401, corsHeaders);
 
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
   const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return json({ error: "Unauthorized" }, 401);
+  if (!user) return json({ error: "Unauthorized" }, 401, corsHeaders);
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
   const { data: profile } = await admin
@@ -62,11 +62,11 @@ serve(async (req) => {
     .select("role")
     .eq("id", user.id)
     .single();
-  if (profile?.role !== "admin") return json({ error: "Forbidden" }, 403);
+  if (profile?.role !== "admin") return json({ error: "Forbidden" }, 403, corsHeaders);
 
   // ── Parse body ────────────────────────────────────────────────────────
   const { submissionId } = await req.json();
-  if (!submissionId) return json({ error: "submissionId is required" }, 400);
+  if (!submissionId) return json({ error: "submissionId is required" }, 400, corsHeaders);
 
   // ── Load submission ───────────────────────────────────────────────────
   const { data: sub, error: subErr } = await admin
@@ -75,8 +75,8 @@ serve(async (req) => {
     .eq("id", submissionId)
     .single();
 
-  if (subErr || !sub) return json({ error: "Submission not found" }, 404);
-  if (!sub.operator_email) return json({ error: "No email on submission" }, 400);
+  if (subErr || !sub) return json({ error: "Submission not found" }, 404, corsHeaders);
+  if (!sub.operator_email) return json({ error: "No email on submission" }, 400, corsHeaders);
 
   // ── Compile stats: find matching experience by title ──────────────────
   const { data: exps } = await admin
@@ -180,7 +180,7 @@ serve(async (req) => {
       ok: true,
       dryRun: true,
       stats: { bookingCount, totalRevenue, ratingStr, reviewCount },
-    });
+    }, 200, corsHeaders);
   }
 
   const resendRes = await fetch("https://api.resend.com/emails", {
@@ -197,8 +197,8 @@ serve(async (req) => {
   if (!resendRes.ok) {
     const err = await resendRes.text();
     console.error("Resend error:", err);
-    return json({ error: "Email delivery failed" }, 502);
+    return json({ error: "Email delivery failed" }, 502, corsHeaders);
   }
 
-  return json({ ok: true, sentTo: sub.operator_email });
+  return json({ ok: true, sentTo: sub.operator_email }, 200, corsHeaders);
 });

@@ -138,6 +138,7 @@ const TRANSACTIONAL_LABELS = new Set([
   'Get tickets →', 'Check availability →', 'View routes →',
 ])
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function resolveCtaLabel(cta, linkVerified) {
   if (linkVerified || !cta?.primary) return cta
   const primary = TRANSACTIONAL_LABELS.has(cta.primary.label)

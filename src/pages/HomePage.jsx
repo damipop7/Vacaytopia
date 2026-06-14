@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense, useCallback, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm, ValidationError } from '@formspree/react'
+import { SINGLE_CITY_MODE, ACTIVE_CITIES } from '../lib/cityConfig'
 import { useAuthStore } from '../store/authStore'
 import { useRecommendations } from '../hooks/useRecommendations'
 import { useLatestQuiz } from '../hooks/useQuiz'
@@ -187,7 +188,9 @@ export default function HomePage() {
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white px-4 py-1.5 rounded-full text-xs font-bold mb-7 backdrop-blur">
             <span className="w-2 h-2 bg-gold-brand rounded-full animate-pulse" />
-            Now live in 5 US cities
+            {SINGLE_CITY_MODE
+              ? `🏆 Your World Cup 2026 guide to ${ACTIVE_CITIES[0]}`
+              : 'Now live in 5 US cities'}
           </div>
 
           {/* Headline */}

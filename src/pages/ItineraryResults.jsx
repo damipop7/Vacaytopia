@@ -13,6 +13,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Cache key fields used to decide whether a stored itinerary matches the current quiz answers.
 // Deliberately excludes interests/extras so minor wording changes don't force regeneration.
+// eslint-disable-next-line react-refresh/only-export-components
 export function itineraryCacheKey(answers) {
   return `${answers?.city}|${answers?.startDate}|${answers?.endDate}|${answers?.budget}`;
 }
@@ -302,6 +303,7 @@ const STORAGE_KEY = "vtopia_active_itinerary";
 
 /** Read and validate the sessionStorage cache against the provided answers.
  *  Returns the parsed cache object on a hit, or null on a miss/error. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function readCachedItinerary(answers) {
   if (!answers) return null;
   try {

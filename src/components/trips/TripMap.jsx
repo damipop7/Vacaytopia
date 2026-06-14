@@ -10,11 +10,13 @@ const DAY_COLORS = ['#3B82F6', '#F97316', '#22C55E', '#A855F7', '#EC4899', '#EAB
 const STATUS_COLORS = { approved: '#22C55E', suggested: '#F59E0B', booked: '#6366F1' }
 const SLOT_LABELS = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', night: 'Night' }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function dayColor(dayNumber) {
   return DAY_COLORS[((dayNumber ?? 1) - 1) % DAY_COLORS.length]
 }
 
 // Returns a flat array of pin-ready objects, filtering out rejected items and those without coords.
+// eslint-disable-next-line react-refresh/only-export-components
 export function getTripMapPins(experiences) {
   return (experiences ?? [])
     .filter(e => e.experiences?.lat && e.experiences?.lng && e.status !== 'rejected')
