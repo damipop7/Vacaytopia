@@ -5,13 +5,14 @@ import { supabase } from '../lib/supabase'
 
 // ── Tabs ────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'overview',     label: 'Overview',     icon: '📊' },
-  { id: 'experiences',  label: 'Experiences',  icon: '🗺️' },
-  { id: 'bookings',     label: 'Bookings',     icon: '📅' },
-  { id: 'users',        label: 'Users',        icon: '👥' },
-  { id: 'submissions',  label: 'Submissions',  icon: '📬' },
-  { id: 'guide-apps',   label: 'Guides',       icon: '🧭' },
-  { id: 'claims',       label: 'Claims',       icon: '🏷️' },
+  { id: 'overview',      label: 'Overview',     icon: '📊' },
+  { id: 'experiences',   label: 'Experiences',  icon: '🗺️' },
+  { id: 'bookings',      label: 'Bookings',     icon: '📅' },
+  { id: 'users',         label: 'Users',        icon: '👥' },
+  { id: 'submissions',   label: 'Submissions',  icon: '📬' },
+  { id: 'guide-apps',    label: 'Guides',       icon: '🧭' },
+  { id: 'claims',        label: 'Claims',       icon: '🏷️' },
+  { id: 'ad-contracts',  label: 'Ad Contracts', icon: '📄' },
 ]
 
 const SUBMISSION_STATUS_STYLES = {
@@ -1308,6 +1309,483 @@ function SummaryPill({ label, value, accent }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// ── Ad Contracts Tab ─────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+
+const TIER_CONFIG = {
+  starter:  { label: 'Starter',  price: '$299/mo', days: 30, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  featured: { label: 'Featured', price: '$599/mo', days: 60, color: 'bg-purple-50 text-purple-700 border-purple-200' },
+  premium:  { label: 'Premium',  price: '$999/mo', days: 90, color: 'bg-gold-tint text-yellow-800 border-gold-brand/30' },
+}
+
+const CONTRACT_STATUS_STYLE = {
+  draft:    'bg-gray-100   text-gray-500  border-gray-200',
+  sent:     'bg-blue-50    text-blue-700  border-blue-200',
+  viewed:   'bg-amber-50   text-amber-700 border-amber-200',
+  signed:   'bg-green-50   text-green-700 border-green-200',
+  declined: 'bg-red-50     text-red-600   border-red-200',
+}
+
+// Contract preview modal
+function ContractPreviewModal({ contract, onClose, onSend, sending }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+         style={{ background: 'rgba(3,70,148,0.18)' }}>
+      <div className="bg-white rounded-card shadow-2xl w-full max-w-3xl my-8">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-blue-brand/8">
+          <div>
+            <h2 className="font-display text-lg font-bold text-[#0D1B3E]">Contract Preview</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {contract.business_name} · {TIER_CONFIG[contract.contract_tier]?.label} · {TIER_CONFIG[contract.contract_tier]?.price}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+
+        {/* Contract text */}
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
+          <pre className="text-xs text-[#1f2937] whitespace-pre-wrap font-mono leading-relaxed bg-gray-50 rounded-[9px] p-4 border border-blue-brand/5">
+            {contract.contract_text}
+          </pre>
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex items-center justify-between gap-3 p-6 border-t border-blue-brand/8">
+          <div className="text-xs text-gray-400">
+            To: <span className="font-medium text-[#0D1B3E]">{contract.contact_email}</span>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose}
+              className="px-4 py-2 text-sm font-semibold text-gray-500 border border-gray-200 rounded-[9px] hover:bg-gray-50 transition-colors">
+              Close
+            </button>
+            {contract.status === 'draft' && (
+              <button onClick={() => onSend(contract.id)} disabled={sending}
+                className="px-5 py-2 text-sm font-bold bg-blue-brand text-white rounded-[9px] hover:bg-blue-800 disabled:opacity-50 transition-colors">
+                {sending ? 'Sending…' : 'Send to Operator →'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Generate contract modal
+function GenerateModal({ exp, onClose, onGenerated }) {
+  const [form, setForm]     = useState({ contact_name: '', contact_email: exp.provider_email || '', business_name: exp.title, tier: 'starter' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError]   = useState(null)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function generate() {
+    if (!form.contact_email) { setError('Contact email is required'); return }
+    setLoading(true)
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ad-contract`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          experience_id: exp.id,
+          contact_name:  form.contact_name,
+          contact_email: form.contact_email,
+          business_name: form.business_name,
+          tier:          form.tier,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Generation failed')
+      onGenerated(data.contract)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const tier = TIER_CONFIG[form.tier]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ background: 'rgba(3,70,148,0.18)' }}>
+      <div className="bg-white rounded-card shadow-2xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-display text-lg font-bold text-[#0D1B3E]">Generate Ad Contract</h2>
+            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{exp.title} · {exp.city}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-[9px] text-sm text-red-600">{error}</div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Business Name</label>
+            <input value={form.business_name} onChange={e => set('business_name', e.target.value)}
+              className="w-full border border-blue-brand/20 rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-brand/30" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Contact Name</label>
+              <input placeholder="e.g. Jane Smith" value={form.contact_name} onChange={e => set('contact_name', e.target.value)}
+                className="w-full border border-blue-brand/20 rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-brand/30" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Contact Email <span className="text-red-400">*</span></label>
+              <input type="email" value={form.contact_email} onChange={e => set('contact_email', e.target.value)}
+                className="w-full border border-blue-brand/20 rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-brand/30" />
+            </div>
+          </div>
+
+          {/* Tier selector */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2">Ad Tier</label>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(TIER_CONFIG).map(([key, cfg]) => (
+                <button key={key} onClick={() => set('tier', key)}
+                  className={`p-3 rounded-[9px] border-2 text-left transition-colors ${
+                    form.tier === key ? 'border-blue-brand bg-blue-tint' : 'border-blue-brand/10 hover:border-blue-brand/30'
+                  }`}>
+                  <div className="text-xs font-bold text-[#0D1B3E]">{cfg.label}</div>
+                  <div className="text-[11px] text-blue-brand font-semibold mt-0.5">{cfg.price}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{cfg.days} days</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tier summary */}
+          <div className="bg-blue-tint rounded-[9px] p-3 text-xs text-[#0D1B3E]">
+            <span className="font-semibold">{tier?.label}:</span>{' '}
+            {form.tier === 'starter'  && 'Sponsored badge + priority listing in category — 30-day campaign'}
+            {form.tier === 'featured' && 'Homepage spotlight + category #1 pin — 60-day campaign'}
+            {form.tier === 'premium'  && 'Homepage hero + newsletter + social post + category #1 — 90-day campaign'}
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose}
+            className="flex-1 py-2 text-sm font-semibold text-gray-500 border border-gray-200 rounded-[9px] hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={generate} disabled={loading}
+            className="flex-1 py-2 text-sm font-bold bg-blue-brand text-white rounded-[9px] hover:bg-blue-800 disabled:opacity-50 transition-colors">
+            {loading ? 'Generating…' : 'Generate Contract'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdContractsTab() {
+  const [view, setView]             = useState('outreach')   // 'outreach' | 'contracts'
+  const [experiences, setExperiences] = useState([])
+  const [contracts, setContracts]   = useState([])
+  const [loadingExp, setLoadingExp] = useState(true)
+  const [loadingCon, setLoadingCon] = useState(true)
+  const [searchExp, setSearchExp]   = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [generateTarget, setGenerateTarget] = useState(null)   // experience being contracted
+  const [previewContract, setPreviewContract] = useState(null) // contract being previewed
+  const [sending, setSending]       = useState(false)
+  const [sendMsg, setSendMsg]       = useState(null)
+
+  const loadExperiences = useCallback(async () => {
+    setLoadingExp(true)
+    const { data } = await supabase
+      .from('experiences')
+      .select('id, title, category, city, external_url, website, provider_email, is_active, rating')
+      .eq('is_active', true)
+      .order('title')
+    setExperiences(data ?? [])
+    setLoadingExp(false)
+  }, [])
+
+  const loadContracts = useCallback(async () => {
+    setLoadingCon(true)
+    const { data } = await supabase
+      .from('ad_contracts')
+      .select('*, experiences(title, category, city)')
+      .order('created_at', { ascending: false })
+    setContracts(data ?? [])
+    setLoadingCon(false)
+  }, [])
+
+  useEffect(() => { loadExperiences() }, [loadExperiences])
+  useEffect(() => { loadContracts()   }, [loadContracts])
+
+  // IDs that already have a contract (any status)
+  const contractedIds = new Set(contracts.map(c => c.experience_id))
+
+  const filteredExp = experiences.filter(e => {
+    if (!searchExp) return true
+    const q = searchExp.toLowerCase()
+    return e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q)
+  })
+
+  const filteredContracts = statusFilter === 'all'
+    ? contracts
+    : contracts.filter(c => c.status === statusFilter)
+
+  function handleGenerated(contract) {
+    setGenerateTarget(null)
+    setContracts(prev => [contract, ...prev])
+    setPreviewContract(contract)
+  }
+
+  async function handleSend(contractId) {
+    setSending(true)
+    setSendMsg(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-ad-contract`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ contract_id: contractId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Send failed')
+      setSendMsg({ ok: true, msg: `Sent to ${data.sentTo}` })
+      setContracts(prev => prev.map(c => c.id === contractId ? { ...c, status: 'sent' } : c))
+      setPreviewContract(prev => prev?.id === contractId ? { ...prev, status: 'sent' } : prev)
+    } catch (e) {
+      setSendMsg({ ok: false, msg: e.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Summary stats
+  const totalValue   = contracts.filter(c => c.status === 'signed').reduce((s, c) => s + (c.monthly_value ?? 0), 0)
+  const sentCount    = contracts.filter(c => c.status === 'sent' || c.status === 'viewed').length
+  const signedCount  = contracts.filter(c => c.status === 'signed').length
+  const pendingCount = contracts.filter(c => c.status === 'draft').length
+
+  return (
+    <div>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <StatCard label="Monthly Revenue (Signed)" value={fmt$(totalValue)} accent="text-green-600" />
+        <StatCard label="Contracts Sent"   value={sentCount}   sub="awaiting response" />
+        <StatCard label="Signed"           value={signedCount} sub="active agreements" />
+        <StatCard label="Drafts"           value={pendingCount} sub="not yet sent" />
+      </div>
+
+      {/* Send toast */}
+      {sendMsg && (
+        <div className={`mb-4 p-3 rounded-[9px] text-sm font-medium border ${
+          sendMsg.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'
+        }`}>
+          {sendMsg.ok ? '✓' : '✗'} {sendMsg.msg}
+          <button onClick={() => setSendMsg(null)} className="ml-3 text-xs opacity-60 hover:opacity-100">dismiss</button>
+        </div>
+      )}
+
+      {/* Sub-nav */}
+      <div className="flex gap-1 mb-6 border-b border-blue-brand/8">
+        {[['outreach', 'Outreach — All Experiences'], ['contracts', 'Contract Pipeline']].map(([id, label]) => (
+          <button key={id} onClick={() => setView(id)}
+            className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+              view === id ? 'border-blue-brand text-blue-brand' : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}>
+            {label}
+            {id === 'contracts' && contracts.length > 0 && (
+              <span className="ml-2 bg-blue-brand/10 text-blue-brand text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {contracts.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OUTREACH VIEW ── */}
+      {view === 'outreach' && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <input
+              value={searchExp}
+              onChange={e => setSearchExp(e.target.value)}
+              placeholder="Search experiences by name or category…"
+              className="flex-1 border border-blue-brand/20 rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-brand/30"
+            />
+            <span className="text-xs text-gray-400 whitespace-nowrap">{filteredExp.length} experiences</span>
+          </div>
+
+          {loadingExp ? (
+            <div className="py-16 flex justify-center">
+              <div className="w-7 h-7 border-2 border-blue-brand/20 border-t-blue-brand rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-blue-brand/8">
+                    {['Experience', 'Category', 'Website', 'Contact Email', 'Status', ''].map(h => (
+                      <th key={h} className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-400 pb-3 pr-4 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExp.map(exp => {
+                    const website = exp.external_url || exp.website
+                    const hasContract = contractedIds.has(exp.id)
+                    const expContracts = contracts.filter(c => c.experience_id === exp.id)
+                    const latestStatus = expContracts[0]?.status
+                    return (
+                      <tr key={exp.id} className="border-b border-blue-brand/5 hover:bg-blue-tint/30 transition-colors">
+                        <td className="py-3 pr-4 font-medium text-[#0D1B3E] max-w-[200px]">
+                          <div className="truncate">{exp.title}</div>
+                          <div className="text-xs text-gray-400">{exp.city}</div>
+                        </td>
+                        <td className="py-3 pr-4 text-gray-500 text-xs">{exp.category}</td>
+                        <td className="py-3 pr-4">
+                          {website
+                            ? <a href={website} target="_blank" rel="noreferrer"
+                                className="text-blue-brand text-xs hover:underline truncate block max-w-[160px]">
+                                {website.replace(/^https?:\/\//, '')}
+                              </a>
+                            : <span className="text-gray-300 text-xs">—</span>}
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-gray-500">
+                          {exp.provider_email || <span className="text-gray-300">Not on file</span>}
+                        </td>
+                        <td className="py-3 pr-4">
+                          {hasContract && latestStatus ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${CONTRACT_STATUS_STYLE[latestStatus] ?? ''}`}>
+                              {latestStatus}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 text-xs">No contract</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => setGenerateTarget(exp)}
+                            className="px-3 py-1.5 text-xs font-bold bg-blue-brand text-white rounded-[7px] hover:bg-blue-800 transition-colors whitespace-nowrap">
+                            {hasContract ? 'New Contract' : 'Generate →'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CONTRACTS VIEW ── */}
+      {view === 'contracts' && (
+        <div>
+          {/* Filter pills */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {['all', 'draft', 'sent', 'viewed', 'signed', 'declined'].map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 text-xs font-semibold rounded-full border transition-colors capitalize ${
+                  statusFilter === s
+                    ? 'bg-blue-brand text-white border-blue-brand'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-blue-brand/40'
+                }`}>
+                {s === 'all' ? `All (${contracts.length})` : `${s} (${contracts.filter(c => c.status === s).length})`}
+              </button>
+            ))}
+          </div>
+
+          {loadingCon ? (
+            <div className="py-16 flex justify-center">
+              <div className="w-7 h-7 border-2 border-blue-brand/20 border-t-blue-brand rounded-full animate-spin" />
+            </div>
+          ) : filteredContracts.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 text-sm">No contracts found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-blue-brand/8">
+                    {['Business', 'Tier', 'Value', 'Contact', 'Status', 'Sent', ''].map(h => (
+                      <th key={h} className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-400 pb-3 pr-4 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContracts.map(c => {
+                    const tier = TIER_CONFIG[c.contract_tier]
+                    return (
+                      <tr key={c.id} className="border-b border-blue-brand/5 hover:bg-blue-tint/30 transition-colors">
+                        <td className="py-3 pr-4 font-medium text-[#0D1B3E]">
+                          <div className="max-w-[180px] truncate">{c.business_name}</div>
+                          <div className="text-xs text-gray-400">{c.experiences?.city || '—'}</div>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${tier?.color ?? ''}`}>
+                            {tier?.label ?? c.contract_tier}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-semibold text-[#0D1B3E]">{fmt$(c.monthly_value)}/mo</td>
+                        <td className="py-3 pr-4 text-xs text-gray-500 max-w-[160px]">
+                          <div className="truncate">{c.contact_name || '—'}</div>
+                          <div className="truncate text-gray-400">{c.contact_email}</div>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${CONTRACT_STATUS_STYLE[c.status] ?? ''}`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-gray-400">{fmtDate(c.sent_at)}</td>
+                        <td className="py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => setPreviewContract(c)}
+                              className="px-3 py-1.5 text-xs font-bold border border-blue-brand text-blue-brand rounded-[7px] hover:bg-blue-tint transition-colors">
+                              View
+                            </button>
+                            {c.status === 'draft' && (
+                              <button onClick={() => handleSend(c.id)} disabled={sending}
+                                className="px-3 py-1.5 text-xs font-bold bg-blue-brand text-white rounded-[7px] hover:bg-blue-800 disabled:opacity-50 transition-colors">
+                                Send
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modals */}
+      {generateTarget && (
+        <GenerateModal exp={generateTarget} onClose={() => setGenerateTarget(null)} onGenerated={handleGenerated} />
+      )}
+      {previewContract && (
+        <ContractPreviewModal
+          contract={previewContract}
+          onClose={() => { setPreviewContract(null); setSendMsg(null) }}
+          onSend={handleSend}
+          sending={sending}
+        />
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
 // ── Main AdminPage ───────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 export default function AdminPage() {
@@ -1395,13 +1873,14 @@ export default function AdminPage() {
       </div>
 
       {/* ── Tab Content ── */}
-      {tab === 'overview'    && <OverviewTab />}
-      {tab === 'experiences' && <ExperiencesTab />}
-      {tab === 'bookings'    && <BookingsTab />}
-      {tab === 'users'       && <UsersTab />}
-      {tab === 'submissions' && <SubmissionsTab onPendingCount={setPendingCount} />}
-      {tab === 'guide-apps'  && <GuideApplicationsTab onPendingCount={setPendingGuideCount} />}
-      {tab === 'claims'      && <ClaimsTab onPendingCount={setPendingClaimsCount} />}
+      {tab === 'overview'      && <OverviewTab />}
+      {tab === 'experiences'   && <ExperiencesTab />}
+      {tab === 'bookings'      && <BookingsTab />}
+      {tab === 'users'         && <UsersTab />}
+      {tab === 'submissions'   && <SubmissionsTab onPendingCount={setPendingCount} />}
+      {tab === 'guide-apps'    && <GuideApplicationsTab onPendingCount={setPendingGuideCount} />}
+      {tab === 'claims'        && <ClaimsTab onPendingCount={setPendingClaimsCount} />}
+      {tab === 'ad-contracts'  && <AdContractsTab />}
     </div>
   )
 }
