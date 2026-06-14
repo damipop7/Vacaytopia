@@ -1796,9 +1796,9 @@ export default function AdminPage() {
   const [pendingGuideCount, setPendingGuideCount] = useState(0)
   const [pendingClaimsCount, setPendingClaimsCount] = useState(0)
 
-  // Role guard — redirect non-admins
+  // Role guard — redirect non-admins and non-partners
   useEffect(() => {
-    if (!loading && profile && profile.role !== 'admin') {
+    if (!loading && profile && profile.role !== 'admin' && profile.role !== 'partner') {
       navigate('/', { replace: true })
     }
   }, [loading, profile, navigate])
@@ -1811,7 +1811,7 @@ export default function AdminPage() {
     )
   }
 
-  if (profile.role !== 'admin') return null
+  if (profile.role !== 'admin' && profile.role !== 'partner') return null
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">

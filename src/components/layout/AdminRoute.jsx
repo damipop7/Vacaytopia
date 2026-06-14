@@ -24,8 +24,8 @@ export default function AdminRoute() {
     return <Navigate to="/auth" state={{ from: location }} replace />
   }
 
-  // Logged in but not admin → send home
-  if (profile?.role !== 'admin') {
+  // Logged in but not admin or partner → send home
+  if (profile?.role !== 'admin' && profile?.role !== 'partner') {
     return <Navigate to="/" replace />
   }
 

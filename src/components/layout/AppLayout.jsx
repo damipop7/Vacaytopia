@@ -23,7 +23,7 @@ export default function AppLayout() {
     ? `${profile.first_name?.[0] ?? ''}${profile.last_name?.[0] ?? ''}`.toUpperCase()
     : '?'
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'partner'
 
   // Frosted glass threshold
   useEffect(() => {
