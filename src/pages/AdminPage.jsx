@@ -685,7 +685,6 @@ function UsersTab() {
 // ── TAB: Submissions ────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 function SubmissionsTab({ onPendingCount }) {
-  const { session } = useAuthStore()
   const [rows, setRows]         = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('pending')
@@ -721,6 +720,7 @@ function SubmissionsTab({ onPendingCount }) {
     setSubmitting(true)
     setError(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/review-submission`,
         {
@@ -748,6 +748,7 @@ function SubmissionsTab({ onPendingCount }) {
   async function sendReport(row) {
     setSendingReport(row.id)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/operator-report`,
         {
@@ -917,7 +918,6 @@ function DetailField({ label, value }) {
 // ── TAB: Guide Applications ──────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 function GuideApplicationsTab({ onPendingCount }) {
-  const { session } = useAuthStore()
   const [rows, setRows]           = useState([])
   const [loading, setLoading]     = useState(true)
   const [filter, setFilter]       = useState('pending')
@@ -1095,7 +1095,6 @@ function GuideApplicationsTab({ onPendingCount }) {
 // ── TAB: Claims ─────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════
 function ClaimsTab({ onPendingCount }) {
-  const { session } = useAuthStore()
   const [rows, setRows]           = useState([])
   const [loading, setLoading]     = useState(true)
   const [filter, setFilter]       = useState('pending')
