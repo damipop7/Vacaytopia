@@ -13,12 +13,12 @@ jobs:
     steps:
       - name: Ping Supabase Auth health endpoint
         run: |
-          status=$(curl -s -o /dev/null -w "%{http_code}" \
+          status=$(curl -s -o /dev/null --max-time 15 -w "%{http_code}" \
             "${SUPABASE_URL}/auth/v1/health" \
             -H "apikey: ${SUPABASE_ANON_KEY}")
           echo "Supabase Auth health responded with HTTP $status"
-          if [ "$status" -ge 500 ]; then
-            echo "::error::Supabase ping failed with server error $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase ping failed (HTTP $status)"
             exit 1
           fi
         env:
