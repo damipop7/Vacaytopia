@@ -1,0 +1,26 @@
+name: Keep Supabase Alive
+
+# Supabase free-tier projects auto-pause after 7 days with no API traffic.
+# This pings the Auth health endpoint on a schedule so Vtopia's project never goes idle.
+on:
+  schedule:
+    - cron: "0 12 */3 * *" # every 3 days at 12:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Auth health endpoint
+        run: |
+          status=$(curl -s -o /dev/null --max-time 15 -w "%{http_code}" \
+            "${SUPABASE_URL}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+          echo "Supabase Auth health responded with HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase ping failed (HTTP $status)"
+            exit 1
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
