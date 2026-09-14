@@ -596,11 +596,30 @@ export default function BrowsePage() {
 
         {/* Near Me — permission denied / unavailable notice */}
         {(nearStatus === 'denied' || nearStatus === 'unavailable') && (
-          <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-card text-sm text-red-600">
+          <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-card text-sm text-red-600">
             <Navigation size={15} className="flex-shrink-0" />
-            {nearStatus === 'denied'
-              ? 'Location access was denied. Enable it in your browser settings and try again.'
-              : 'Geolocation is not supported in this browser.'}
+            <span className="flex-1">
+              {nearStatus === 'denied'
+                ? 'Location access was denied. Click the lock/site-info icon next to the address bar, allow Location, then try again.'
+                : 'Geolocation is not supported in this browser.'}
+            </span>
+            {nearStatus === 'denied' && (
+              <button
+                type="button"
+                onClick={requestNear}
+                className="flex-shrink-0 text-xs font-semibold underline hover:no-underline"
+              >
+                Try again
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={clearNear}
+              aria-label="Dismiss"
+              className="flex-shrink-0 text-red-400 hover:text-red-600 leading-none"
+            >
+              <X size={15} />
+            </button>
           </div>
         )}
 
