@@ -500,7 +500,7 @@ export default function BrowsePage() {
                   ? 'border-red-300 text-red-500 cursor-not-allowed'
                   : 'border-blue-brand/15 text-gray-500 hover:border-blue-brand hover:text-blue-brand'
               }`}
-              title={nearStatus === 'denied' ? 'Location access denied — enable it in browser settings' : nearStatus === 'unavailable' ? 'Geolocation not supported in this browser' : ''}
+              title={nearStatus === 'denied' ? 'Location access denied — enable it in browser settings' : nearStatus === 'unavailable' ? 'Could not get your location — click to try again' : nearStatus === 'unsupported' ? 'Geolocation not supported in this browser' : ''}
             >
               <Navigation size={13} aria-hidden="true" />
               {nearStatus === 'requesting' ? 'Locating…' : nearMeActive ? 'Near Me ✓' : 'Near Me'}
@@ -594,12 +594,14 @@ export default function BrowsePage() {
           </div>
         )}
 
-        {/* Near Me — permission denied / unavailable notice */}
-        {(nearStatus === 'denied' || nearStatus === 'unavailable') && (
+        {/* Near Me — permission denied / transient failure / unsupported notice */}
+        {(nearStatus === 'denied' || nearStatus === 'unavailable' || nearStatus === 'unsupported') && (
           <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-card text-sm text-red-600">
             <Navigation size={15} className="flex-shrink-0" />
             {nearStatus === 'denied'
               ? 'Location access was denied. Enable it in your browser settings and try again.'
+              : nearStatus === 'unavailable'
+              ? "Couldn't get your location. Check your device's location services and try again."
               : 'Geolocation is not supported in this browser.'}
           </div>
         )}
