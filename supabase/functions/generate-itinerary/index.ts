@@ -56,6 +56,11 @@ const VALID_HELP_NEEDED = new Set([
   "transport", "hotels", "restaurants", "activities", "flights", "none",
 ]);
 
+// Rate limit: caps how often one user can trigger an Anthropic call, independent of
+// whether the client ever saves the resulting itinerary (guards direct/scripted calls too).
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX_REQUESTS = 8;
+
 // Strip prompt-injection patterns from free-text user input
 function sanitizeExtras(text: unknown): string {
   if (typeof text !== "string") return "";
@@ -203,6 +208,32 @@ serve(async (req) => {
         status: 400,
         headers: { "Content-Type": "application/json", ...cors },
       });
+    }
+
+    // Enforce per-user rate limit before spending an Anthropic call
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+    const { count, error: countError } = await supabase
+      .from("itinerary_generation_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", windowStart);
+
+    if (countError) {
+      console.error("rate limit check failed:", countError);
+    } else if ((count ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
+      return new Response(
+        JSON.stringify({ error: "Too many itinerary requests — please wait a bit and try again." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...cors } }
+      );
+    }
+
+    await supabase.from("itinerary_generation_log").insert({ user_id: user.id });
+    // Opportunistic cleanup so the log table doesn't grow unbounded
+    if (Math.random() < 0.05) {
+      await supabase
+        .from("itinerary_generation_log")
+        .delete()
+        .lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
     }
 
     // Fetch real experiences for the city so Claude uses accurate prices and IDs
