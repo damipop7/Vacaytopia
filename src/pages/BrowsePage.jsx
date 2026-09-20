@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Fragment } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useRecommendations } from '../hooks/useRecommendations'
@@ -8,6 +8,7 @@ import { useNearMe } from '../hooks/useNearMe'
 import { useWeather } from '../hooks/useWeather'
 import WeatherWidget from '../components/ui/WeatherWidget'
 import ExperienceCard from '../components/cards/ExperienceCard'
+import CollapsibleSection from '../components/ui/CollapsibleSection'
 import { isCityActive, SINGLE_CITY_MODE } from '../lib/cityConfig'
 import { QUIZ_INTERESTS } from '../lib/travelQuiz'
 import { distanceMi } from '../lib/geo'
@@ -614,32 +615,53 @@ export default function BrowsePage() {
           const picks = experiences.filter(e => interestCategories.has(e.category)).slice(0, 6)
           if (!picks.length) return null
           return (
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <div>
-                  <h2 className="font-display font-bold text-lg text-[#0D1B3E]">Personalized for you</h2>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {quizData.interests.map(id => {
-                      const info = interestLabelMap[id]
-                      return info ? (
-                        <span key={id} className="text-[11px] font-semibold bg-blue-tint text-blue-brand px-2.5 py-1 rounded-full border border-blue-brand/15 flex items-center gap-1">
-                          <span>{info.emoji}</span>{info.label}
-                        </span>
-                      ) : null
-                    })}
-                  </div>
-                </div>
+            <CollapsibleSection
+              title="Personalized for you"
+              headerAction={
                 <Link to="/interests" className="text-xs text-blue-brand hover:underline flex-shrink-0 font-semibold">
                   Update interests →
                 </Link>
-              </div>
+              }
+              subtitle={
+                <div className="flex flex-wrap gap-1.5 mb-3 -mt-1.5">
+                  {quizData.interests.map(id => {
+                    const info = interestLabelMap[id]
+                    return info ? (
+                      <span key={id} className="text-[11px] font-semibold bg-blue-tint text-blue-brand px-2.5 py-1 rounded-full border border-blue-brand/15 flex items-center gap-1">
+                        <span>{info.emoji}</span>{info.label}
+                      </span>
+                    ) : null
+                  })}
+                </div>
+              }
+            >
               <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
                 {picks.map(exp => <ExperienceCard key={exp.id} experience={exp} />)}
               </div>
-              <div className="border-t border-blue-brand/8 mt-8 mb-6" />
-            </div>
+            </CollapsibleSection>
           )
         })()}
+
+        {/* Sponsored — pulled out of the results grid into its own collapsible section */}
+        {!isLoading && !isComingSoon && filtered.length > 0 && (
+          <CollapsibleSection
+            title="Sponsored"
+            badge={
+              <span className="text-[10px] font-bold bg-gold-tint text-[#854F0B] px-1.5 py-0.5 rounded border border-gold-brand/25">
+                SPONSORED
+              </span>
+            }
+          >
+            <div className="bg-white rounded-card border border-gold-brand/25 px-5 py-4 flex items-center gap-4">
+              <div className="text-3xl">🏨</div>
+              <div className="flex-1">
+                <div className="font-semibold text-sm text-[#0D1B3E]">Stay close to the action</div>
+                <div className="text-xs text-gray-400 mt-0.5">Exclusive vtopia hotel rates in {cityName}. Book with your experiences.</div>
+              </div>
+              <button type="button" className="btn-primary text-xs px-4 py-2 flex-shrink-0">View Deal</button>
+            </div>
+          </CollapsibleSection>
+        )}
 
         {/* Error */}
         {error && (
@@ -680,23 +702,8 @@ export default function BrowsePage() {
         {/* Grid */}
         {!isLoading && filtered.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filtered.filter(e => !personalizedIds.has(e.id)).map((exp, idx) => (
-              <Fragment key={exp.id}>
-                <ExperienceCard experience={exp} showForYou distanceMi={exp._distMi} />
-                {idx === 5 && (
-                  <div className="col-span-full bg-white rounded-card border border-gold-brand/25 px-5 py-4 flex items-center gap-4">
-                    <div className="text-3xl">🏨</div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm text-[#0D1B3E]">
-                        Stay close to the action
-                        <span className="ml-2 text-[10px] font-bold bg-gold-tint text-[#854F0B] px-1.5 py-0.5 rounded border border-gold-brand/25">SPONSORED</span>
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">Exclusive vtopia hotel rates in {cityName}. Book with your experiences.</div>
-                    </div>
-                    <button type="button" className="btn-primary text-xs px-4 py-2 flex-shrink-0">View Deal</button>
-                  </div>
-                )}
-              </Fragment>
+            {filtered.filter(e => !personalizedIds.has(e.id)).map(exp => (
+              <ExperienceCard key={exp.id} experience={exp} showForYou distanceMi={exp._distMi} />
             ))}
           </div>
         )}
