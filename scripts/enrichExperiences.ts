@@ -14,6 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { validateExperience } from '../src/lib/dataValidator'
+import { deriveCuisineTag, mergeCuisineTag } from '../src/lib/cuisineTags'
 
 const SUPABASE_URL      = process.env.VITE_SUPABASE_URL      || ''
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || ''
@@ -32,6 +33,7 @@ interface Experience {
   lat: number | null
   lng: number | null
   data_freshness: string | null
+  tags: string[] | null
   [key: string]: unknown
 }
 
@@ -51,7 +53,7 @@ async function fetchGooglePlaces(exp: Experience): Promise<Record<string, unknow
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_KEY,
-      'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours',
+      'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours,places.types',
     },
     body: JSON.stringify({ textQuery: `${exp.title} ${exp.city}` }),
   })
@@ -71,6 +73,7 @@ async function fetchGooglePlaces(exp: Experience): Promise<Record<string, unknow
     hours:               (place.regularOpeningHours as { weekdayDescriptions?: string[] })?.weekdayDescriptions
       ? parseGoogleHours((place.regularOpeningHours as { weekdayDescriptions: string[] }).weekdayDescriptions)
       : null,
+    cuisine_tag:         deriveCuisineTag(place.types as string[] | undefined),
   }
 }
 
@@ -120,7 +123,7 @@ async function run() {
   const cutoff = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString()
   const { data: experiences, error } = await supabase
     .from('experiences')
-    .select('id, title, city, category, lat, lng, data_freshness')
+    .select('id, title, city, category, lat, lng, data_freshness, tags')
     .eq('is_active', true)
     .or(`data_freshness.is.null,data_freshness.lt.${cutoff}`)
     .order('data_freshness', { ascending: true, nullsFirst: true })
@@ -145,7 +148,9 @@ async function run() {
     }
 
     if (googleData.status === 'fulfilled' && googleData.value) {
-      Object.assign(enriched, googleData.value)
+      const { cuisine_tag, ...rest } = googleData.value
+      Object.assign(enriched, rest)
+      enriched.tags = mergeCuisineTag(exp.tags, cuisine_tag as string | null)
     }
     if (fsqData.status === 'fulfilled' && fsqData.value) {
       Object.assign(enriched, fsqData.value)
