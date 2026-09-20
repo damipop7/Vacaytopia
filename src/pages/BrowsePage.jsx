@@ -686,26 +686,31 @@ export default function BrowsePage() {
           </div>
         )}
 
-        {/* Map (lazy — keeps leaflet off initial bundle) */}
-        {!isLoading && filtered.length > 0 && viewMode === 'map' && (
-          <Suspense
-            fallback={
-              <div className="rounded-card border border-blue-brand/10 h-[min(70vh,560px)] bg-blue-tint animate-pulse flex items-center justify-center text-sm text-gray-400">
-                Loading map…
-              </div>
-            }
+        {/* All experiences — map or grid, collapsible like Personalized/Sponsored above */}
+        {!isLoading && filtered.length > 0 && (
+          <CollapsibleSection
+            title="All Experiences"
+            badge={<span className="text-xs text-gray-400 font-normal">{filtered.length}</span>}
           >
-            <BrowseMap experiences={filtered} userCoords={nearCoords} />
-          </Suspense>
-        )}
-
-        {/* Grid */}
-        {!isLoading && filtered.length > 0 && viewMode === 'grid' && (
-          <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {filtered.filter(e => !personalizedIds.has(e.id)).map(exp => (
-              <ExperienceCard key={exp.id} experience={exp} showForYou distanceMi={exp._distMi} />
-            ))}
-          </div>
+            {viewMode === 'map' ? (
+              // Map (lazy — keeps leaflet off initial bundle)
+              <Suspense
+                fallback={
+                  <div className="rounded-card border border-blue-brand/10 h-[min(70vh,560px)] bg-blue-tint animate-pulse flex items-center justify-center text-sm text-gray-400">
+                    Loading map…
+                  </div>
+                }
+              >
+                <BrowseMap experiences={filtered} userCoords={nearCoords} />
+              </Suspense>
+            ) : (
+              <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                {filtered.filter(e => !personalizedIds.has(e.id)).map(exp => (
+                  <ExperienceCard key={exp.id} experience={exp} showForYou distanceMi={exp._distMi} />
+                ))}
+              </div>
+            )}
+          </CollapsibleSection>
         )}
 
         {/* Coming soon state */}
