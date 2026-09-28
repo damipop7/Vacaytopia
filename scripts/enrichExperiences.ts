@@ -4,7 +4,7 @@
  * enriched fields back into the Supabase database.
  *
  * Usage:
- *   VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... \
+ *   VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
  *   VITE_GOOGLE_MAPS_API_KEY=... VITE_FOURSQUARE_API_KEY=... \
  *   npx tsx scripts/enrichExperiences.ts
  *
@@ -16,13 +16,21 @@ import { createClient } from '@supabase/supabase-js'
 import { validateExperience } from '../src/lib/dataValidator'
 import { deriveCuisineTag, mergeCuisineTag } from '../src/lib/cuisineTags'
 
-const SUPABASE_URL      = process.env.VITE_SUPABASE_URL      || ''
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || ''
-const GOOGLE_KEY        = process.env.VITE_GOOGLE_MAPS_API_KEY || ''
-const FOURSQUARE_KEY    = process.env.VITE_FOURSQUARE_API_KEY  || ''
-const STALE_DAYS        = 30
+const SUPABASE_URL         = process.env.VITE_SUPABASE_URL          || ''
+// Writes to `experiences` require the admin role per RLS ("Admins can manage
+// experiences" — migration 001); the anon key can only SELECT and silently
+// updates zero rows with no error, so this must be the service role key.
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY  || ''
+const GOOGLE_KEY           = process.env.VITE_GOOGLE_MAPS_API_KEY   || ''
+const FOURSQUARE_KEY       = process.env.VITE_FOURSQUARE_API_KEY    || ''
+const STALE_DAYS           = 30
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+if (!SUPABASE_SERVICE_KEY) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY not set — get it from Supabase dashboard > Project Settings > API > service_role')
+  process.exit(1)
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 interface Experience {
