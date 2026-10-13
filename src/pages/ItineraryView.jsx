@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "../lib/supabase";
 import ExperienceCard from "../components/cards/ExperienceCard";
+import DayCard from "../components/itinerary/DayCard";
+import { useItineraryExperiences } from "../hooks/useItineraryExperiences";
 import { CITY_LABELS } from "../lib/cities";
 
 const BUDGET_LABELS = {
@@ -24,83 +26,6 @@ const INTEREST_TAG_MAP = {
   shopping:  ["tourism:attraction"],
   music:     ["tourism:attraction"],
 };
-
-function TimeBlock({ period, data, icon }) {
-  if (!data) return null;
-  return (
-    <div className="flex gap-4">
-      <div className="flex flex-col items-center">
-        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-base flex-shrink-0">{icon}</div>
-        <div className="w-px flex-1 bg-white/10 mt-2" />
-      </div>
-      <div className="pb-6 flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-white/40 text-xs uppercase tracking-wider">{period}</span>
-          {data.cost && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-mono">{data.cost}</span>}
-        </div>
-        <h4 className="font-bold text-base mb-1">{data.title}</h4>
-        <p className="text-white/60 text-sm leading-relaxed">{data.description}</p>
-        {data.tip && <div className="mt-2 text-xs text-blue-300 bg-blue-600/10 border border-blue-500/20 rounded-lg px-3 py-2">💡 {data.tip}</div>}
-        {data.experienceId && (
-          <Link
-            to={`/experience/${data.experienceId}`}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 transition"
-            onClick={(e) => e.stopPropagation()}
-          >
-            🎫 Book on Vtopia →
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MealBlock({ label, content }) {
-  if (!content) return null;
-  return (
-    <div className="flex gap-3 items-start py-2 border-t border-white/5">
-      <span className="text-sm mt-0.5">{label === "Lunch" ? "🥗" : "🍽️"}</span>
-      <div>
-        <span className="text-white/40 text-xs">{label}:</span>
-        <p className="text-sm text-white/70">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-function DayCard({ day, index }) {
-  const [open, setOpen] = useState(index === 0);
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
-      <button className="w-full flex items-center justify-between p-5 text-left" onClick={() => setOpen((o) => !o)}>
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-blue-400">{day.day}</div>
-          <div>
-            <div className="text-xs text-white/40 uppercase tracking-wider">Day {day.day}</div>
-            <div className="font-semibold">{day.theme}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {day.dailyTotal && <span className="text-xs bg-white/5 border border-white/10 rounded-full px-3 py-1 text-white/50 font-mono hidden md:block">~{day.dailyTotal}</span>}
-          <span className={`text-white/40 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>▼</span>
-        </div>
-      </button>
-      {open && (
-        <div className="px-5 pb-5 border-t border-white/5">
-          <div className="mt-5">
-            <TimeBlock period="Morning" data={day.morning} icon="🌅" />
-            <TimeBlock period="Afternoon" data={day.afternoon} icon="☀️" />
-            <TimeBlock period="Evening" data={day.evening} icon="🌙" />
-          </div>
-          <div className="mt-2 bg-white/[0.02] rounded-xl p-4">
-            <MealBlock label="Lunch" content={day.lunch} />
-            <MealBlock label="Dinner" content={day.dinner} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function BookableExperiences({ cityKey, interests = [] }) {
   const [experiences, setExperiences] = useState([]);
@@ -169,6 +94,7 @@ export default function ItineraryView() {
   const [status, setStatus] = useState("loading");
   const [activeTab, setActiveTab] = useState("itinerary");
   const [copied, setCopied] = useState(false);
+  const { data: slotExperiences } = useItineraryExperiences(record?.itinerary_data);
 
   async function fetchItinerary() {
     const { data, error } = await supabase
@@ -322,7 +248,7 @@ export default function ItineraryView() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {activeTab === "itinerary" && (
           <div className="flex flex-col gap-4">
-            {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} />)}
+            {itinerary.days?.map((day, i) => <DayCard key={day.day} day={day} index={i} experiences={slotExperiences} />)}
             <BookableExperiences cityKey={record.city} interests={record.interests || []} />
           </div>
         )}

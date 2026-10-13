@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { isMapsUrl, isWellFormedBookingUrl } from '../lib/linkValidation'
-import { resolveCtaLabel } from '../pages/ExperiencePage'
+import { resolveCtaLabel } from '../lib/experienceCta'
 
 // ── isMapsUrl ─────────────────────────────────────────────────────────────────
 
