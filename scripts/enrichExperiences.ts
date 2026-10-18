@@ -118,14 +118,20 @@ async function fetchFoursquare(exp: Experience): Promise<Record<string, unknown>
   }
 }
 
+// Optional city scope (e.g. ENRICH_CITY="Kansas City") so a run can be limited
+// to the currently-live city instead of touching every city's (mostly unlaunched) data.
+const ENRICH_CITY = process.env.ENRICH_CITY || ''
+
 async function run() {
   // Fetch stale or unenriched records (not refreshed in 30+ days)
   const cutoff = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString()
-  const { data: experiences, error } = await supabase
+  let query = supabase
     .from('experiences')
     .select('id, title, city, category, lat, lng, data_freshness, tags')
     .eq('is_active', true)
     .or(`data_freshness.is.null,data_freshness.lt.${cutoff}`)
+  if (ENRICH_CITY) query = query.eq('city', ENRICH_CITY)
+  const { data: experiences, error } = await query
     .order('data_freshness', { ascending: true, nullsFirst: true })
     .limit(50)
 
