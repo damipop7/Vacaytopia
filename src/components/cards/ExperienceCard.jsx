@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useWishlist } from '../../hooks/useWishlist'
 import { Heart, MapPin, Clock, Star, ExternalLink, Navigation } from 'lucide-react'
-import { viatorSearchUrl, openTableUrl } from '../../lib/affiliates.config'
 import { formatDistance, walkMinutes } from '../../lib/geo'
 import { isOpenNow } from '../../lib/openingHours'
+import { resolveCta, resolveCtaLabel, hasExternalCta } from '../../lib/experienceCta'
 
 const GRADIENTS = {
   'ci-mia': 'from-[#b2e8f8] to-[#7dd8f5]',
@@ -378,23 +378,24 @@ export default function ExperienceCard({ experience, showForYou = false, distanc
         <div className="flex items-center justify-between pt-3 border-t border-blue-brand/8">
           <PriceTier tier={resolvedTier} />
           <div className="flex items-center gap-2">
-            {/* Viator affiliate CTA for bookable experiences */}
-            {experience?.experience_type && experience.experience_type !== 'outdoor_free' && experience.experience_type !== 'cultural_free' && (
-              <a
-                href={
-                  experience.experience_type === 'restaurant_reserve'
-                    ? openTableUrl(title, city)
-                    : viatorSearchUrl(title, city)
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                aria-label={experience.experience_type === 'restaurant_reserve' ? 'Reserve on OpenTable' : 'Book on Viator'}
-                className="text-gray-400 hover:text-blue-brand transition-colors"
-              >
-                <ExternalLink size={13} aria-hidden="true" />
-              </a>
-            )}
+            {/* Follow-through CTA — same per-type resolveCta() logic as the experience detail page,
+                so walk-up/walk-in places (Starbucks, a park, a bar with no cover) never get a fake "Book" link */}
+            {hasExternalCta(experience) && (() => {
+              const linkVerified = !experience.link_status || experience.link_status === 'verified'
+              const cta = resolveCtaLabel(resolveCta(experience), linkVerified)
+              return (
+                <a
+                  href={cta.primary.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={cta.primary.label.replace(' →', '')}
+                  className="text-gray-400 hover:text-blue-brand transition-colors"
+                >
+                  <ExternalLink size={13} aria-hidden="true" />
+                </a>
+              )
+            })()}
             <span className="text-sm text-blue-brand hover:text-blue-600 font-medium transition-colors flex items-center gap-0.5">
               View details →
             </span>
